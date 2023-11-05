@@ -54,15 +54,10 @@ try:
 
                 
 
-                # send the data on socket in string format <isLeft, turnThrottle, isForward, throttle>
+                # send the data on socket in string format <isLeft,isForward, turnThrottle, isForward, throttle>
                 data = f"<{isLeft},{isForward},{turnThrottle},{throttle}>"
                 sock.sendto(data.encode(), (HOST, PORT))
                 
-                
-        # when no events send default values
-        #data = f"<{isLeft},{turnThrottle},{isForward},{throttle}>"
-        #sock.sendto(data.encode(), (HOST, PORT))
-
 
 except KeyboardInterrupt:
     # Cleanup when the program is terminated
