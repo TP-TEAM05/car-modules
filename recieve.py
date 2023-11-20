@@ -1,7 +1,7 @@
 import socket
 import serial
 
-ser = serial.Serial ("/dev/serial0", 9600)
+ser = serial.Serial ("/dev/serial0", 115200)
 
 # Define the IP address and port to listen on
 HOST = '127.0.0.1'
