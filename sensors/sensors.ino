@@ -8,12 +8,13 @@
 
 #define HALL_PIN 2 
 
+char buffer[30];
+
 TFMini tfmini;
 
-SoftwareSerial SerialTFMini(1,0); //The only value that matters here is the first one, 2, Rx
+SoftwareSerial SerialTFMini(4,5); //The only value that matters here is the first one, 2, Rx
 // serial(1) = pin12=RX, pin13=TX
 // serial(2) = pin16=RX green, pin17=TX white
-SoftwareSerial SerialWrite(4,5);
 
 unsigned int HighByte = 0;
 unsigned int LowByte  = 0;
@@ -35,12 +36,11 @@ void magnet_detect() {
   char buf[7];
   startTime = endTime;
 
-  Serial.print("Speed: ");
-  Serial.print(speed);
+  //Serial.print("Speed: ");
+  //Serial.print(speed);
   speedFinal = speed;
-  Serial.println(" km/h");
+  //Serial.println(" km/h");
   dtostrf(speed,6,2,buf);
-  SerialWrite.write("<1,>");
 }
 
 
@@ -89,6 +89,7 @@ void lidarSetup() {
 
 void lidarLoop() 
 {
+  delay(25);
   int distance = 0;
   int strength = 0;
 
@@ -96,52 +97,32 @@ void lidarLoop()
   while(!distance) {
     getTFminiData(&distance, &strength);
     if(distance) {
-      Serial.print(distance);
       distanceFinal = distance;
-      Serial.print("cm\t");
-      Serial.print("strength: ");
-      Serial.println(strength);
     }
   }
-  SerialWrite.write("<0,>");
-  delay(1000);
+  //delay(1000);
 }
 
-void ultraSetup() {
-  SerialWrite.begin(9600);
-}
-
-void ultraLoop() {
-  SerialWrite.flush();
-  SerialWrite.write(0X55);                           // trig US-100 begin to measure the distance
-  delay(500);                                  
-  if (SerialWrite.available() >= 2)                  // check receive 2 bytes correctly
-  {
-    HighByte = SerialWrite.read();
-    LowByte  = SerialWrite.read();
-    Len  = HighByte * 256 + LowByte;          // Calculate the distance
-    if ((Len > 1) && (Len < 10000))
-    {
-      Serial.print("Distance: ");
-      Serial.print(Len, DEC);          
-      Serial.println("mm");                  
-    }
-  }
-  delay(300);                                    
-}
 
 void setup() {
   Serial.begin(115200);
+  Serial1.begin(115200);
   while (!Serial);
+  while (!Serial1);
   Serial.println("Initializing....");
   lidarSetup();
   //ultraSetup();
   pinMode(HALL_PIN, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(HALL_PIN), magnet_detect, FALLING);
-  SerialWrite.begin(115200);
 }
 
 void loop() {
   lidarLoop();
   //ultraLoop();
+  Serial.print("Distance: ");
+  Serial.print(distanceFinal);
+  Serial.print("cm speed: ");
+  Serial.println(speedFinal);
+  int len = snprintf(buffer, sizeof(buffer), "%0.2f,%0.2f\n", distanceFinal, speedFinal);
+  Serial1.write(buffer, len);
 }
