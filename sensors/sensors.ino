@@ -33,14 +33,14 @@ void magnet_detect() {
   endTime = millis();
   unsigned long elapsedTime = endTime - startTime;
   float speed = ((float)wheelCircumference / 100000.00) / ((float)elapsedTime / (float)millisToHours);
-  char buf[7];
+  //char buf[7];
   startTime = endTime;
 
-  //Serial.print("Speed: ");
-  //Serial.print(speed);
+  Serial.print("Speed: ");
+  Serial.print(speed);
   speedFinal = speed;
-  //Serial.println(" km/h");
-  dtostrf(speed,6,2,buf);
+  Serial.println(" km/h");
+  //dtostrf(speed,6,2,buf);
 }
 
 
@@ -89,7 +89,6 @@ void lidarSetup() {
 
 void lidarLoop() 
 {
-  delay(25);
   int distance = 0;
   int strength = 0;
 
@@ -100,7 +99,7 @@ void lidarLoop()
       distanceFinal = distance;
     }
   }
-  //delay(1000);
+  delay(25);
 }
 
 
@@ -119,10 +118,10 @@ void setup() {
 void loop() {
   lidarLoop();
   //ultraLoop();
-  Serial.print("Distance: ");
+  /*Serial.print("Distance: ");
   Serial.print(distanceFinal);
   Serial.print("cm speed: ");
-  Serial.println(speedFinal);
+  Serial.println(speedFinal);*/
   int len = snprintf(buffer, sizeof(buffer), "%0.2f,%0.2f\n", distanceFinal, speedFinal);
   Serial1.write(buffer, len);
 }

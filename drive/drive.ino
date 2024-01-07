@@ -19,7 +19,7 @@ As the original code is under the GNU General Public License v2.0, our code also
 #define MAXRIGHT  1000
 #define MIDDLE    1500
 // pin 3 on Raspberry Pi Pico
-#define DIRPIN    3
+#define DIRPIN   19
 
 //Object to abstract the directional servo
 Servo dir;

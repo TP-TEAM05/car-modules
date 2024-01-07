@@ -14,7 +14,11 @@ def recieve():
     while True:
         if serRecieve.in_waiting > 0:
             recData = serRecieve.readline()
-            print(recData.decode())
+            recData = recData.decode()
+            recData = recData.split(',')
+            distance = recData[0]
+            speed = recData[1].split('\n')[0]
+            print(f"Distance: {distance} cm, speed {speed} km/h")
 
 
 # Define the IP address and port to listen on
@@ -33,7 +37,6 @@ recieveThread = threading.Thread(target=recieve)
 try:
     print("Ready!")
     recieveThread.start()
-
 
     while True:
             #dist = distance()
