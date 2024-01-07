@@ -4,7 +4,7 @@ import socket
 
 
 # Define the IP address and port to send data to localhost
-HOST = '192.168.20.238'
+HOST = '192.168.1.142'
 PORT = 12345
 
 # Initialize the game controller
@@ -77,6 +77,7 @@ try:
                 # send the data on socket in string format <isLeft,isForward, turnThrottle, isForward, throttle>
                 data = f"<{isLeft},{isForward},{throttle},{turnThrottle}>"
                 sock.sendto(data.encode(), (HOST, PORT))
+                print(data)
                 #time.sleep(0.1)
 
 except KeyboardInterrupt:
