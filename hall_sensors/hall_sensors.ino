@@ -26,7 +26,14 @@ const float wheelCircumference = M_PI * wheelDiameter;
 // Maximum allowed speed change in km/h to filter inaccuracies
 const float maxSpeedChange = 10.0;
 
-void ISR_sensor1() { calculateSpeed(lastTriggerTime1, lastValidSpeed1, 1); }
+// Flag to indicate sensor 1 has updated
+volatile bool sensor1Updated = false;
+
+void ISR_sensor1() {
+  calculateSpeed(lastTriggerTime1, lastValidSpeed1, 1);
+  sensor1Updated = true; // Set flag when sensor 1 updates
+}
+
 void ISR_sensor2() { calculateSpeed(lastTriggerTime2, lastValidSpeed2, 2); }
 void ISR_sensor3() { calculateSpeed(lastTriggerTime3, lastValidSpeed3, 3); }
 void ISR_sensor4() { calculateSpeed(lastTriggerTime4, lastValidSpeed4, 4); }
@@ -46,10 +53,8 @@ void setup() {
 }
 
 void loop() {
-  // Use a static variable to ensure we don't spam the serial output
-  static unsigned long lastPrintTime = 0;
-  if (millis() - lastPrintTime > 100) { // Update every 1 second
-    // Print all sensor speeds in the requested format
+  if (sensor1Updated) {
+    // Print all sensor speeds in the requested format when sensor 1 updates
     Serial.print('<');
     Serial.print(lastValidSpeed1, 2);
     Serial.print(',');
@@ -59,8 +64,8 @@ void loop() {
     Serial.print(',');
     Serial.print(lastValidSpeed4, 2);
     Serial.println('>');
-
-    lastPrintTime = millis();
+    
+    sensor1Updated = false; // Reset flag after printing
   }
 }
 
