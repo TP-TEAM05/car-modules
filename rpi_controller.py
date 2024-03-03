@@ -5,24 +5,26 @@ import time
 import threading
 
 
-ser = serial.Serial ("/dev/ttyAMA0", 115200)
-serRecieve = serial.Serial ("/dev/ttyAMA1", 115200)
+ser = serial.Serial ("/dev/ttyAMA1", 115200)
+serRecieve = serial.Serial ("/dev/ttyAMA0", 115200)
 
 # function, that will recieve data from serial port serRecieve and print what it recieved
 def recieve():
     print("Recieve thread started")
     while True:
         if serRecieve.in_waiting > 0:
+            print(f"Recieved:")
             recData = serRecieve.readline()
             recData = recData.decode()
-            recData = recData.split(',')
+            print(f"Recieved: {recData}")
+            """recData = recData.split(',')
             distance = recData[0]
             speed = recData[1].split('\n')[0]
-            print(f"Distance: {distance} cm, speed {speed} km/h")
+            print(f"Distance: {distance} cm, speed {speed} km/h")"""
 
 
 # Define the IP address and port to listen on
-HOST = '192.168.1.142'
+HOST = '192.168.1.49'
 PORT = 12345
 
 # Create a socket for listening
@@ -33,11 +35,11 @@ data = bytes("<0,0,0,0>", "utf-8")
 
 
 # setup multithreading for function recieve
-#recieveThread = threading.Thread(target=recieve)
-try:
+recieveThread = threading.Thread(target=recieve)
+try:  
+    recieveThread.daemon = True  # Daemonize thread
+    recieveThread.start()
     print("Ready!")
-#    recieveThread.start()
-
     while True:
             #dist = distance()
             #print ("Measured Distance = %.1f cm" % dist)
@@ -46,7 +48,7 @@ try:
             data, addr = sock.recvfrom(13)
             value = data.decode()
             ser.write(data) #Send data via serial
-            serRecieve.write(data)
+            #serRecieve.write(data)
             print(f"Received value: {value}")
             """
             try:

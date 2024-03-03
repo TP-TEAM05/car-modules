@@ -4,7 +4,8 @@ import socket
 
 
 # Define the IP address and port to send data to localhost
-HOST = '192.168.1.142'
+HOST = '192.168.1.49'
+
 PORT = 12345
 
 # Initialize the game controller

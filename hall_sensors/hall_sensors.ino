@@ -1,5 +1,5 @@
 #include <cmath> // For M_PI
-
+char buffer[30];
 // Define sensor pins
 const int hallSensorPin1 = 2;
 const int hallSensorPin2 = 3;
@@ -26,12 +26,12 @@ const float wheelCircumference = M_PI * wheelDiameter;
 // Maximum allowed speed change in km/h to filter inaccuracies
 const float maxSpeedChange = 10.0;
 
-// Flag to indicate sensor 1 has updated
-volatile bool sensor1Updated = false;
 
 void ISR_sensor1() {
   calculateSpeed(lastTriggerTime1, lastValidSpeed1, 1);
-  sensor1Updated = true; // Set flag when sensor 1 updates
+  int len = snprintf(buffer, sizeof(buffer), "%0.2f,%0.2f\n", lastValidSpeed1, lastValidSpeed2);
+  Serial.print(buffer);
+  Serial1.write(buffer, len);
 }
 
 void ISR_sensor2() { calculateSpeed(lastTriggerTime2, lastValidSpeed2, 2); }
@@ -40,12 +40,13 @@ void ISR_sensor4() { calculateSpeed(lastTriggerTime4, lastValidSpeed4, 4); }
 
 void setup() {
   Serial.begin(9600);
-
+  Serial1.begin(115200);
   pinMode(hallSensorPin1, INPUT_PULLUP);
   pinMode(hallSensorPin2, INPUT_PULLUP);
   pinMode(hallSensorPin3, INPUT_PULLUP);
   pinMode(hallSensorPin4, INPUT_PULLUP);
-
+  while (!Serial1);
+  while (!Serial);
   attachInterrupt(digitalPinToInterrupt(hallSensorPin1), ISR_sensor1, FALLING);
   attachInterrupt(digitalPinToInterrupt(hallSensorPin2), ISR_sensor2, FALLING);
   attachInterrupt(digitalPinToInterrupt(hallSensorPin3), ISR_sensor3, FALLING);
@@ -53,20 +54,6 @@ void setup() {
 }
 
 void loop() {
-  if (sensor1Updated) {
-    // Print all sensor speeds in the requested format when sensor 1 updates
-    Serial.print('<');
-    Serial.print(lastValidSpeed1, 2);
-    Serial.print(',');
-    Serial.print(lastValidSpeed2, 2);
-    Serial.print(',');
-    Serial.print(lastValidSpeed3, 2);
-    Serial.print(',');
-    Serial.print(lastValidSpeed4, 2);
-    Serial.println('>');
-    
-    sensor1Updated = false; // Reset flag after printing
-  }
 }
 
 void calculateSpeed(volatile unsigned long &lastTriggerTime, volatile float &lastValidSpeed, int sensorPin) {
