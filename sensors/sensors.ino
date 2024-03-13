@@ -6,7 +6,10 @@
 #define diameterCm 12
 #define millisToHours 3600000.00
 
-#define HALL_PIN 2 
+#define HALL_PIN_FL 2
+#define HALL_PIN_FR 3
+#define HALL_PIN_RL 4
+#define HALL_PIN_RR 5
 
 char buffer[30];
 
@@ -21,28 +24,83 @@ unsigned int LowByte  = 0;
 unsigned int Len  = 0;
 
 const float wheelCircumference = M_PI * diameterCm;
-
-
-volatile unsigned long startTime = 0;
-volatile unsigned long endTime = 0;
-
 volatile float distanceFinal = 0;
-volatile float speedFinal = 0;
 
-void magnet_detect() {
-  endTime = millis();
-  unsigned long elapsedTime = endTime - startTime;
+
+volatile unsigned long startTime_fl = 0;
+volatile unsigned long endTime_fl = 0;
+volatile float speedFinal_fl = 0;
+
+void magnet_detect_fl() {
+  endTime_fl = millis();
+  unsigned long elapsedTime = endTime_fl - startTime_fl;
   float speed = ((float)wheelCircumference / 100000.00) / ((float)elapsedTime / (float)millisToHours);
   //char buf[7];
-  startTime = endTime;
+  startTime_fl = endTime_fl;
 
-  Serial.print("Speed: ");
+  Serial.print("Speed_fl: ");
   Serial.print(speed);
-  speedFinal = speed;
+  speedFinal_fl = speed;
   Serial.println(" km/h");
   //dtostrf(speed,6,2,buf);
 }
 
+
+volatile unsigned long startTime_fr = 0;
+volatile unsigned long endTime_fr = 0;
+volatile float speedFinal_fr = 0;
+
+void magnet_detect_fr() {
+  endTime_fr = millis();
+  unsigned long elapsedTime = endTime_fr - startTime_fr;
+  float speed = ((float)wheelCircumference / 100000.00) / ((float)elapsedTime / (float)millisToHours);
+  //char buf[7];
+  startTime_fr = endTime_fr;
+
+  Serial.print("Speed_fr: ");
+  Serial.print(speed);
+  speedFinal_fr = speed;
+  Serial.println(" km/h");
+  //dtostrf(speed,6,2,buf);
+}
+
+
+volatile unsigned long startTime_rl = 0;
+volatile unsigned long endTime_rl = 0;
+volatile float speedFinal_rl = 0;
+
+void magnet_detect_rl() {
+  endTime_rl = millis();
+  unsigned long elapsedTime = endTime_rl - startTime_rl;
+  float speed = ((float)wheelCircumference / 100000.00) / ((float)elapsedTime / (float)millisToHours);
+  //char buf[7];
+  startTime_rl = endTime_rl;
+
+  Serial.print("Speed_rl: ");
+  Serial.print(speed);
+  speedFinal_rl = speed;
+  Serial.println(" km/h");
+  //dtostrf(speed,6,2,buf);
+}
+
+
+volatile unsigned long startTime_rr = 0;
+volatile unsigned long endTime_rr = 0;
+volatile float speedFinal_rr = 0;
+
+void magnet_detect_rr() {
+  endTime_rr = millis();
+  unsigned long elapsedTime = endTime_rr - startTime_rr;
+  float speed = ((float)wheelCircumference / 100000.00) / ((float)elapsedTime / (float)millisToHours);
+  //char buf[7];
+  startTime_rr = endTime_rr;
+
+  Serial.print("Speed_rr: ");
+  Serial.print(speed);
+  speedFinal_rr = speed;
+  Serial.println(" km/h");
+  //dtostrf(speed,6,2,buf);
+}
 
 void getTFminiData(int* distance, int* strength) {
   static char i = 0;
@@ -111,17 +169,22 @@ void setup() {
   Serial.println("Initializing....");
   lidarSetup();
   //ultraSetup();
-  pinMode(HALL_PIN, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(HALL_PIN), magnet_detect, FALLING);
+  /*pinMode(HALL_PIN_FL, INPUT_PULLUP);
+  pinMode(HALL_PIN_FR, INPUT_PULLUP);
+  pinMode(HALL_PIN_RL, INPUT_PULLUP);
+  pinMode(HALL_PIN_RR, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(HALL_PIN_FL), magnet_detect_fl, FALLING);
+  attachInterrupt(digitalPinToInterrupt(HALL_PIN_FR), magnet_detect_fr, FALLING);
+  attachInterrupt(digitalPinToInterrupt(HALL_PIN_RL), magnet_detect_rl, FALLING);
+  attachInterrupt(digitalPinToInterrupt(HALL_PIN_RR), magnet_detect_rr, FALLING);*/
 }
 
 void loop() {
   lidarLoop();
   //ultraLoop();
   /*Serial.print("Distance: ");
-  Serial.print(distanceFinal);
-  Serial.print("cm speed: ");
-  Serial.println(speedFinal);*/
-  int len = snprintf(buffer, sizeof(buffer), "%0.2f,%0.2f\n", distanceFinal, speedFinal);
+  Serial.println(distanceFinal);*/
+  int len = snprintf(buffer, sizeof(buffer), "%0.2f,%0.2f,%0.2f,%0.2f,%0.2f", distanceFinal, speedFinal_fl,speedFinal_fr,speedFinal_rl,speedFinal_rr);
   Serial1.write(buffer, len);
+  Serial.write(buffer, len);
 }
