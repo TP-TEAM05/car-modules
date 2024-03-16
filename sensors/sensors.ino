@@ -1,106 +1,73 @@
 #include <SoftwareSerial.h>
 #include "TFMini.h"
-#include <math.h>
+#include <cmath> // For M_PI
 
 
 #define diameterCm 12
 #define millisToHours 3600000.00
 
-#define HALL_PIN_FL 2
-#define HALL_PIN_FR 3
-#define HALL_PIN_RL 4
-#define HALL_PIN_RR 5
+const int hallSensorPin1 = 2;
+const int hallSensorPin2 = 3;
+const int hallSensorPin3 = 4;
+const int hallSensorPin4 = 5;
+
+// Variables to store the last trigger time
+volatile unsigned long lastTriggerTime1 = 0;
+volatile unsigned long lastTriggerTime2 = 0;
+volatile unsigned long lastTriggerTime3 = 0;
+volatile unsigned long lastTriggerTime4 = 0;
+
+// Variables to store the last valid speed
+volatile float lastValidSpeed1 = 0.0;
+volatile float lastValidSpeed2 = 0.0;
+volatile float lastValidSpeed3 = 0.0;
+volatile float lastValidSpeed4 = 0.0;
+
+// Wheel diameter in meters (0.12m)
+const float wheelDiameter = 0.12;
+// Calculate circumference (C = pi * d) using M_PI for Pi
+const float wheelCircumference = M_PI * wheelDiameter;
+
+// Maximum allowed speed change in km/h to filter inaccuracies
+const float maxSpeedChange = 10.0;
+
+volatile float distanceFinal = 0.0;
 
 char buffer[30];
 
 TFMini tfmini;
 
-SoftwareSerial SerialTFMini(4,5); //The only value that matters here is the first one, 2, Rx
+SoftwareSerial SerialTFMini(6,7); //The only value that matters here is the first one, 2, Rx
 // serial(1) = pin12=RX, pin13=TX
 // serial(2) = pin16=RX green, pin17=TX white
 
-unsigned int HighByte = 0;
-unsigned int LowByte  = 0;
-unsigned int Len  = 0;
 
-const float wheelCircumference = M_PI * diameterCm;
-volatile float distanceFinal = 0;
+void calculateSpeed(volatile unsigned long &lastTriggerTime, volatile float &lastValidSpeed, int sensorPin) {
+  unsigned long currentTime = micros();
+  float timeElapsed = (currentTime - lastTriggerTime) / 1000000.0; // Time in seconds
+  if (timeElapsed == 0) return; // Prevent division by zero
 
+  float speedKmPerH = (wheelCircumference / timeElapsed) * 3.6;
 
-volatile unsigned long startTime_fl = 0;
-volatile unsigned long endTime_fl = 0;
-volatile float speedFinal_fl = 0;
-
-void magnet_detect_fl() {
-  endTime_fl = millis();
-  unsigned long elapsedTime = endTime_fl - startTime_fl;
-  float speed = ((float)wheelCircumference / 100000.00) / ((float)elapsedTime / (float)millisToHours);
-  //char buf[7];
-  startTime_fl = endTime_fl;
-
-  Serial.print("Speed_fl: ");
-  Serial.print(speed);
-  speedFinal_fl = speed;
-  Serial.println(" km/h");
-  //dtostrf(speed,6,2,buf);
+  // Check if speed change is within the realistic threshold
+  if (abs(speedKmPerH - lastValidSpeed) <= maxSpeedChange || lastValidSpeed == 0.0) {
+    lastValidSpeed = speedKmPerH; // Update last valid speed
+  }
+  lastTriggerTime = currentTime; // Always update last trigger time
 }
 
 
-volatile unsigned long startTime_fr = 0;
-volatile unsigned long endTime_fr = 0;
-volatile float speedFinal_fr = 0;
-
-void magnet_detect_fr() {
-  endTime_fr = millis();
-  unsigned long elapsedTime = endTime_fr - startTime_fr;
-  float speed = ((float)wheelCircumference / 100000.00) / ((float)elapsedTime / (float)millisToHours);
-  //char buf[7];
-  startTime_fr = endTime_fr;
-
-  Serial.print("Speed_fr: ");
-  Serial.print(speed);
-  speedFinal_fr = speed;
-  Serial.println(" km/h");
-  //dtostrf(speed,6,2,buf);
+void ISR_sensor1() {
+  calculateSpeed(lastTriggerTime1, lastValidSpeed1, 1);
+  /*int len = snprintf(buffer, sizeof(buffer), "%0.2f,%0.2f,%0.2f,%0.2f", lastValidSpeed1, lastValidSpeed2,lastValidSpeed3,lastValidSpeed4);
+  Serial.write(buffer);
+  Serial.println();*/
 }
 
+void ISR_sensor2() { calculateSpeed(lastTriggerTime2, lastValidSpeed2, 2); }
+void ISR_sensor3() { calculateSpeed(lastTriggerTime3, lastValidSpeed3, 3); }
+void ISR_sensor4() { calculateSpeed(lastTriggerTime4, lastValidSpeed4, 4); }
 
-volatile unsigned long startTime_rl = 0;
-volatile unsigned long endTime_rl = 0;
-volatile float speedFinal_rl = 0;
-
-void magnet_detect_rl() {
-  endTime_rl = millis();
-  unsigned long elapsedTime = endTime_rl - startTime_rl;
-  float speed = ((float)wheelCircumference / 100000.00) / ((float)elapsedTime / (float)millisToHours);
-  //char buf[7];
-  startTime_rl = endTime_rl;
-
-  Serial.print("Speed_rl: ");
-  Serial.print(speed);
-  speedFinal_rl = speed;
-  Serial.println(" km/h");
-  //dtostrf(speed,6,2,buf);
-}
-
-
-volatile unsigned long startTime_rr = 0;
-volatile unsigned long endTime_rr = 0;
-volatile float speedFinal_rr = 0;
-
-void magnet_detect_rr() {
-  endTime_rr = millis();
-  unsigned long elapsedTime = endTime_rr - startTime_rr;
-  float speed = ((float)wheelCircumference / 100000.00) / ((float)elapsedTime / (float)millisToHours);
-  //char buf[7];
-  startTime_rr = endTime_rr;
-
-  Serial.print("Speed_rr: ");
-  Serial.print(speed);
-  speedFinal_rr = speed;
-  Serial.println(" km/h");
-  //dtostrf(speed,6,2,buf);
-}
 
 void getTFminiData(int* distance, int* strength) {
   static char i = 0;
@@ -145,8 +112,7 @@ void lidarSetup() {
   tfmini.begin(&SerialTFMini);   
 }
 
-void lidarLoop() 
-{
+void lidarLoop() {
   int distance = 0;
   int strength = 0;
 
@@ -166,25 +132,24 @@ void setup() {
   Serial1.begin(115200);
   while (!Serial);
   while (!Serial1);
+  pinMode(hallSensorPin1, INPUT_PULLUP);
+  pinMode(hallSensorPin2, INPUT_PULLUP);
+  pinMode(hallSensorPin3, INPUT_PULLUP);
+  pinMode(hallSensorPin4, INPUT_PULLUP);
   Serial.println("Initializing....");
   lidarSetup();
   //ultraSetup();
-  /*pinMode(HALL_PIN_FL, INPUT_PULLUP);
-  pinMode(HALL_PIN_FR, INPUT_PULLUP);
-  pinMode(HALL_PIN_RL, INPUT_PULLUP);
-  pinMode(HALL_PIN_RR, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(HALL_PIN_FL), magnet_detect_fl, FALLING);
-  attachInterrupt(digitalPinToInterrupt(HALL_PIN_FR), magnet_detect_fr, FALLING);
-  attachInterrupt(digitalPinToInterrupt(HALL_PIN_RL), magnet_detect_rl, FALLING);
-  attachInterrupt(digitalPinToInterrupt(HALL_PIN_RR), magnet_detect_rr, FALLING);*/
+  attachInterrupt(digitalPinToInterrupt(hallSensorPin1), ISR_sensor1, FALLING);
+  attachInterrupt(digitalPinToInterrupt(hallSensorPin2), ISR_sensor2, FALLING);
+  attachInterrupt(digitalPinToInterrupt(hallSensorPin3), ISR_sensor3, FALLING);
+  attachInterrupt(digitalPinToInterrupt(hallSensorPin4), ISR_sensor4, FALLING);
 }
 
 void loop() {
   lidarLoop();
   //ultraLoop();
-  /*Serial.print("Distance: ");
-  Serial.println(distanceFinal);*/
-  int len = snprintf(buffer, sizeof(buffer), "%0.2f,%0.2f,%0.2f,%0.2f,%0.2f", distanceFinal, speedFinal_fl,speedFinal_fr,speedFinal_rl,speedFinal_rr);
+  int len = snprintf(buffer, sizeof(buffer), "%0.2f,%0.2f,%0.2f,%0.2f,%0.2f", distanceFinal, lastValidSpeed1, lastValidSpeed2,lastValidSpeed3,lastValidSpeed4);
   Serial1.write(buffer, len);
   Serial.write(buffer, len);
+  Serial.println();
 }

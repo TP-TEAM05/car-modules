@@ -29,9 +29,9 @@ const float maxSpeedChange = 10.0;
 
 void ISR_sensor1() {
   calculateSpeed(lastTriggerTime1, lastValidSpeed1, 1);
-  int len = snprintf(buffer, sizeof(buffer), "%0.2f,%0.2f\n", lastValidSpeed1, lastValidSpeed2);
-  Serial.print(buffer);
-  Serial1.write(buffer, len);
+  int len = snprintf(buffer, sizeof(buffer), "%0.2f,%0.2f,%0.2f,%0.2f", lastValidSpeed1, lastValidSpeed2,lastValidSpeed3,lastValidSpeed4);
+  Serial.write(buffer);
+  Serial.println();
 }
 
 void ISR_sensor2() { calculateSpeed(lastTriggerTime2, lastValidSpeed2, 2); }
@@ -40,12 +40,10 @@ void ISR_sensor4() { calculateSpeed(lastTriggerTime4, lastValidSpeed4, 4); }
 
 void setup() {
   Serial.begin(9600);
-  Serial1.begin(115200);
   pinMode(hallSensorPin1, INPUT_PULLUP);
   pinMode(hallSensorPin2, INPUT_PULLUP);
   pinMode(hallSensorPin3, INPUT_PULLUP);
   pinMode(hallSensorPin4, INPUT_PULLUP);
-  while (!Serial1);
   while (!Serial);
   attachInterrupt(digitalPinToInterrupt(hallSensorPin1), ISR_sensor1, FALLING);
   attachInterrupt(digitalPinToInterrupt(hallSensorPin2), ISR_sensor2, FALLING);

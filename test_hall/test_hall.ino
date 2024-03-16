@@ -1,4 +1,4 @@
-#define diameterCm 9
+#define diameterCm 12
 #define millisToHours 3600000.00
 #include <math.h>
 
