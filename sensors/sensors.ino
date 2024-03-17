@@ -1,6 +1,7 @@
 #include <SoftwareSerial.h>
 #include "TFMini.h"
 #include <cmath> // For M_PI
+#include <TinyGPS++.h>
 
 
 #define diameterCm 12
@@ -33,13 +34,21 @@ const float maxSpeedChange = 10.0;
 
 volatile float distanceFinal = 0.0;
 
-char buffer[30];
+// Default is the position of FIIT STU
+volatile float gpsLon = 17.071734;
+volatile float gpsLat = 48.153435;
+
+char buffer[60];
 
 TFMini tfmini;
 
 SoftwareSerial SerialTFMini(6,7); //The only value that matters here is the first one, 2, Rx
 // serial(1) = pin12=RX, pin13=TX
 // serial(2) = pin16=RX green, pin17=TX white
+
+TinyGPSPlus gps;
+
+SoftwareSerial GPSSerial(8,9);
 
 
 void calculateSpeed(volatile unsigned long &lastTriggerTime, volatile float &lastValidSpeed, int sensorPin) {
@@ -107,6 +116,7 @@ void lidarSetup() {
 
   // Step 2: Initialize the data rate for the SoftwareSerial port
   SerialTFMini.begin(TFMINI_BAUDRATE);
+  while (!SerialTFMini);
 
   // Step 3: Initialize the TF Mini sensor
   tfmini.begin(&SerialTFMini);   
@@ -127,28 +137,91 @@ void lidarLoop() {
 }
 
 
+void displayGPSInfo() {
+  // Display basic information
+  //Serial.print(F("Location: ")); 
+  if (gps.location.isValid()) {
+    gpsLat = gps.location.lat();
+    gpsLon = gps.location.lng();
+    /*Serial.print(gps.location.lat(), 6);
+    Serial.print(F(","));
+    Serial.print(gps.location.lng(), 6);*/
+  } else {
+    gpsLat = 48.153435;
+    gpsLon = 17.071734;
+    //Serial.print(F("INVALID"));
+  }
+/*
+  //Serial.print(F("  Date/Time: "));
+  if (gps.date.isValid()) {
+    Serial.print(gps.date.month());
+    Serial.print(F("/"));
+    Serial.print(gps.date.day());
+    Serial.print(F("/"));
+    Serial.print(gps.date.year());
+  } else {
+    Serial.print(F("INVALID"));
+  }
+
+  //Serial.print(F(" "));
+  if (gps.time.isValid()) {
+    if (gps.time.hour() < 10) Serial.print(F("0"));
+    Serial.print(gps.time.hour());
+    Serial.print(F(":"));
+    if (gps.time.minute() < 10) Serial.print(F("0"));
+    Serial.print(gps.time.minute());
+    //Serial.print(F(":"));
+    if (gps.time.second() < 10) Serial.print(F("0"));
+    Serial.print(gps.time.second());
+    //Serial.print(F("."));
+    if (gps.time.centisecond() < 10) Serial.print(F("0"));
+    //Serial.print(gps.time.centisecond());
+  } else {
+    //Serial.print(F("INVALID"));
+  }
+
+  //Serial.println();*/
+}
+
+void gpsLoop() {
+  while (GPSSerial.available() > 0) {
+    if (gps.encode(GPSSerial.read())) {
+      displayGPSInfo(); // Once we get a full sentence, display the info
+    }
+  }
+
+  // If we haven't received any data in a while, show a message.
+  if (millis() > 5000 && gps.charsProcessed() < 10) {
+    Serial.println(F("No GPS detected: check wiring."));
+    while(true);
+  }
+}
+
+
 void setup() {
   Serial.begin(115200);
   Serial1.begin(115200);
+  GPSSerial.begin(9600);
   while (!Serial);
   while (!Serial1);
   pinMode(hallSensorPin1, INPUT_PULLUP);
   pinMode(hallSensorPin2, INPUT_PULLUP);
   pinMode(hallSensorPin3, INPUT_PULLUP);
   pinMode(hallSensorPin4, INPUT_PULLUP);
-  Serial.println("Initializing....");
   lidarSetup();
   //ultraSetup();
   attachInterrupt(digitalPinToInterrupt(hallSensorPin1), ISR_sensor1, FALLING);
   attachInterrupt(digitalPinToInterrupt(hallSensorPin2), ISR_sensor2, FALLING);
   attachInterrupt(digitalPinToInterrupt(hallSensorPin3), ISR_sensor3, FALLING);
   attachInterrupt(digitalPinToInterrupt(hallSensorPin4), ISR_sensor4, FALLING);
+  Serial.println("Initializing....");
 }
 
 void loop() {
   lidarLoop();
   //ultraLoop();
-  int len = snprintf(buffer, sizeof(buffer), "%0.2f,%0.2f,%0.2f,%0.2f,%0.2f", distanceFinal, lastValidSpeed1, lastValidSpeed2,lastValidSpeed3,lastValidSpeed4);
+  gpsLoop();
+  int len = snprintf(buffer, sizeof(buffer), "<0.00,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.6f,%0.6f>", distanceFinal, lastValidSpeed1, lastValidSpeed2, lastValidSpeed3,lastValidSpeed4, gpsLon, gpsLat);
   Serial1.write(buffer, len);
   Serial.write(buffer, len);
   Serial.println();
