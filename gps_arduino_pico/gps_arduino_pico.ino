@@ -8,8 +8,8 @@ TinyGPSPlus gps;
 SoftwareSerial GPSSerial(8,9);
 
 void setup() {
-  Serial.begin(9600);   // Start serial communication with the computer  // Start serial communication with the GPS module on GPSSerial
-  GPSSerial.begin(9600);
+  Serial.begin(115200);   // Start serial communication with the computer  // Start serial communication with the GPS module on GPSSerial
+  GPSSerial.begin(115200);
   Serial.println(F("Device is starting..."));
   Serial.println(F("GPS Module test with TinyGPS++ library"));
 }

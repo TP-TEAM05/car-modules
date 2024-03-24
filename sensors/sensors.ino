@@ -201,7 +201,7 @@ void gpsLoop() {
 void setup() {
   Serial.begin(9600);
   Serial1.begin(115200);
-  GPSSerial.begin(9600);
+  GPSSerial.begin(115200);
   while (!Serial);
   while (!Serial1);
   pinMode(hallSensorPin1, INPUT_PULLUP);
@@ -221,7 +221,9 @@ void loop() {
   lidarLoop();
   //ultraLoop();
   gpsLoop();
-  int len = snprintf(buffer, sizeof(buffer), "<0.00,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.6f,%0.6f>\r", distanceFinal, lastValidSpeed1, lastValidSpeed2, lastValidSpeed3,lastValidSpeed4, gpsLon, gpsLat);
+
+  volatile float meanSpeed = (lastValidSpeed1 + lastValidSpeed2 + lastValidSpeed3 + lastValidSpeed4) / 4;
+  int len = snprintf(buffer, sizeof(buffer), "<0.00,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.6f,%0.6f>\r", distanceFinal, lastValidSpeed1, lastValidSpeed2, lastValidSpeed3,lastValidSpeed4, meanSpeed, gpsLon, gpsLat);
   Serial.write(buffer, len);
   //Serial.write(buffer, len);
   //Serial.println();
