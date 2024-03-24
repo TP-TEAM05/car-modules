@@ -199,7 +199,7 @@ void gpsLoop() {
 
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
   Serial1.begin(115200);
   GPSSerial.begin(9600);
   while (!Serial);
@@ -214,15 +214,15 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(hallSensorPin2), ISR_sensor2, FALLING);
   attachInterrupt(digitalPinToInterrupt(hallSensorPin3), ISR_sensor3, FALLING);
   attachInterrupt(digitalPinToInterrupt(hallSensorPin4), ISR_sensor4, FALLING);
-  Serial.println("Initializing....");
+  //Serial.println("Initializing....");
 }
 
 void loop() {
   lidarLoop();
   //ultraLoop();
   gpsLoop();
-  int len = snprintf(buffer, sizeof(buffer), "<0.00,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.6f,%0.6f>", distanceFinal, lastValidSpeed1, lastValidSpeed2, lastValidSpeed3,lastValidSpeed4, gpsLon, gpsLat);
-  Serial1.write(buffer, len);
+  int len = snprintf(buffer, sizeof(buffer), "<0.00,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.6f,%0.6f>\r", distanceFinal, lastValidSpeed1, lastValidSpeed2, lastValidSpeed3,lastValidSpeed4, gpsLon, gpsLat);
   Serial.write(buffer, len);
-  Serial.println();
+  //Serial.write(buffer, len);
+  //Serial.println();
 }
