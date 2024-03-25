@@ -38,7 +38,7 @@ volatile float distanceFinal = 0.0;
 volatile float gpsLon = 17.071734;
 volatile float gpsLat = 48.153435;
 
-char buffer[60];
+char buffer[80];
 
 TFMini tfmini;
 
