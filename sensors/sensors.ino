@@ -206,7 +206,6 @@ void setup() {
   Serial1.begin(115200);
   GPSSerial.begin(115200);
   HallSerial.begin(115200);
-  while (!Serial);
   while (!Serial1);
   pinMode(hallSensorPin1, INPUT_PULLUP);
   pinMode(hallSensorPin2, INPUT_PULLUP);
@@ -237,6 +236,4 @@ void loop() {
   HallSerial.write(buffer2, len2);
   Serial.write(buffer, len);
   //Serial.write(buffer, len);
-  Serial.write(buffer2, len2);
-  Serial.println();
 }
