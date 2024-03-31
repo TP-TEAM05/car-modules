@@ -39,6 +39,7 @@ volatile float gpsLon = 17.071734;
 volatile float gpsLat = 48.153435;
 
 char buffer[80];
+char buffer2[80];
 
 TFMini tfmini;
 
@@ -49,6 +50,8 @@ SoftwareSerial SerialTFMini(6,7); //The only value that matters here is the firs
 TinyGPSPlus gps;
 
 SoftwareSerial GPSSerial(8,9);
+
+SoftwareSerial HallSerial(10,11);
 
 
 void calculateSpeed(volatile unsigned long &lastTriggerTime, volatile float &lastValidSpeed, int sensorPin) {
@@ -202,6 +205,7 @@ void setup() {
   Serial.begin(9600);
   Serial1.begin(115200);
   GPSSerial.begin(115200);
+  HallSerial.begin(115200);
   while (!Serial);
   while (!Serial1);
   pinMode(hallSensorPin1, INPUT_PULLUP);
@@ -221,10 +225,18 @@ void loop() {
   lidarLoop();
   //ultraLoop();
   gpsLoop();
-
-  volatile float meanSpeed = (lastValidSpeed1 + lastValidSpeed2 + lastValidSpeed3 + lastValidSpeed4) / 4;
+  volatile float meanSpeed;
+  if (lastValidSpeed1 == 0.00 && lastValidSpeed3 == 0.00) {
+    meanSpeed = (lastValidSpeed2 + lastValidSpeed4) / 2;
+  } else {
+    meanSpeed = (lastValidSpeed1 + lastValidSpeed2 + lastValidSpeed3 + lastValidSpeed4) / 4;
+  }
+    
   int len = snprintf(buffer, sizeof(buffer), "<0.00,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.6f,%0.6f>\r", distanceFinal, lastValidSpeed1, lastValidSpeed2, lastValidSpeed3,lastValidSpeed4, meanSpeed, gpsLon, gpsLat);
+  int len2 = snprintf(buffer2, sizeof(buffer2), "<%0.2f,>\r",meanSpeed);
+  HallSerial.write(buffer2, len2);
   Serial.write(buffer, len);
   //Serial.write(buffer, len);
-  //Serial.println();
+  Serial.write(buffer2, len2);
+  Serial.println();
 }
