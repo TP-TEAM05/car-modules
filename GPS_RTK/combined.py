@@ -1,6 +1,7 @@
 import socket
 import base64
 import sys
+import time
 from serial import Serial
 import pynmeagps
 import threading
@@ -34,35 +35,57 @@ header = f"GET /{mountpoint} HTTP/1.0\r\n" +\
 
 def ntrip_client():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.connect((server, int(port)))
-        s.send(header.encode('utf-8'))
-        resp = s.recv(1024)
+        global ntrip_socket
+        ntrip_socket = s
+        ntrip_socket.connect((server, int(port)))
+        ntrip_socket.send(header.encode('utf-8'))
+        resp = ntrip_socket.recv(1024)
         if resp.startswith(b"STREAMTABLE"):
             print("Invalid or No Mountpoint")
             exit()
         elif resp.startswith(b"ICY 200 OK"):
             print("All good")
         
-        try:
+        
             while True:
-                data = s.recv(1024)
-                if not data:
-                    break
-                ser.write(data)
-                print("Written RTK")
-        except Exception as e:
-            print(f"Error in NTRIP client: {e}")
+                try:
+                    data = ntrip_socket.recv(1024)
+                    if not data:
+                        break
+                    ser.write(data)
+                    print("Written RTK")
+                except Exception as e:
+                    print(f"Error in NTRIP client: {e}")
+                    # reestablish connection
+                    while True:
+                        try:
+                            ntrip_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                            ntrip_socket.connect((server, int(port)))
+                            ntrip_socket.send(header.encode('utf-8'))
+                            resp = ntrip_socket.recv(1024)
+                            if resp.startswith(b"ICY 200 OK"):
+                                print("Reconnected")
+                                break
+                        except Exception as e:
+                            print(f"Error in NTRIP client: {e}")
+                            time.sleep(5)
+
+                    
+
+                
 
 def nmea_reader():
     nmr = pynmeagps.NMEAReader(ser)
-    try:
-        while True:
+    while True:
+        try:
             raw_data, parsed_data = nmr.read()
             parsed: pynmeagps.NMEAMessage = parsed_data
             if (parsed.msgID == "RMC"):
                 print(parsed.lat, parsed.lon)
-    except Exception as e:
-        print(f"Error in NMEA reader: {e}")
+        except Exception as e:
+            print(f"Error in NMEA reader: {e}")
+
+
 try:
     # Threads setup
     thread_ntrip = threading.Thread(target=ntrip_client)
@@ -73,6 +96,7 @@ try:
     thread_nmea.start()
 
 except KeyboardInterrupt:
+    print("Exiting...")
     ser.close()
     # Join threads to the main thread
     thread_ntrip.join()
