@@ -1,102 +1,43 @@
-import sys
-import os
-import socket
-import base64
+import sys, os
 import serial
 import struct
 import logging
 from datetime import datetime
-import threading
 
-# Shared Serial port configuration
+
 tty = "COM3"
+
 ser = serial.Serial(tty, 115200, timeout=2, xonxoff=False, rtscts=False, dsrdtr=False)
+
+
+
 ser.flushInput()
 ser.flushOutput()
+print("Hello UBX, let's get the data!")
 
-# Configure logging
+#147.175.56.137
+rawMessage = bytearray()
+mlcounter = 0
+
+globalGroundSpeed = 0
+globalCourse = 0
+
+print_hpposllh = 1
+print_velned = 1
+
 now = datetime.now()
 nowstr = now.strftime("%Y-%m-%d_%H-%M-%S")
 logname = "./" + nowstr + "_gps.log"
 logging.basicConfig(filename=logname, filemode='w', format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-# Global variables
-globalGroundSpeed = 0
-globalCourse = 0
-print_hpposllh = 0
-print_velned = 0
-
-rawMessage = bytearray()
-
-def gps_receiver_thread():
-    print("Hello UBX, let's get the data!")
-    mlcounter = 0
-
-    try:
-        while True:
-            bytesToRead = ser.inWaiting()
-            lastByte = ser.read(1)
-            if lastByte[0] == 0xb5:
-                mlcounter = 0
-                parse_msg(rawMessage)
-                rawMessage.clear()
-                rawMessage.append(lastByte[0])
-                mlcounter += 1
-            else:
-                if mlcounter < 42:
-                    rawMessage.append(lastByte[0])
-                    mlcounter += 1
-    except KeyboardInterrupt:
-        print("Interrupted by User")
-        sys.exit(0)
-
-def ntrip_client_thread():
-    bs = "bs1"
-    if bs == "bs1":
-        server = "ergerg"
-        port = "ergreg"
-        mountpoint = "ergerg"
-        username = "ergerg"
-        password = "fgweraerger"
-
-    pwd = getHTTPBasicAuthString(username, password)
-    header = f"GET /{mountpoint} HTTP/1.0\r\nUser-Agent: NTRIP u-blox\r\nAccept: */*\r\nAuthorization: Basic {pwd}\r\nConnection: close\r\n\r\n"
-
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect((server, int(port)))
-    s.send(header.encode('utf-8'))
-    resp = s.recv(1024)
-    print(resp)
-
-    if resp.startswith(b"STREAMTABLE"):
-        print("Invalid or No Mountpoint")
-        sys.exit(0)
-    elif not resp.startswith(b"HTTP/1.1 200 OK"):
-        print("All good")
-
-    try:
-        while True:
-            data = s.recv(1024)
-            if not data:
-                break
-            print("Written RTK")
-            ser.write(data)
-            sys.stdout.flush()
-    finally:
-        s.close()
-
-def getHTTPBasicAuthString(username, password):
-    input_string = f"{username}:{password}"
-    pwd_bytes = base64.b64encode(input_string.encode("utf-8"))
-    pwd = pwd_bytes.decode("utf-8").replace('\n', '')
-    return pwd
-
-def parse_msg(rawMessage):
+def parse_msg():
     if len(rawMessage) == 42:
         if rawMessage[3] == 0x12:
             parse_velned()
         if rawMessage[3] == 0x14:
             parse_hpposllh()
+
+
 
 def parse_velned():
     if len(rawMessage) == 42:
@@ -185,12 +126,27 @@ def parse_hpposllh():
                 print("hAcc:", hAcc[0] / 10, "mm vAcc:", vAcc[0] / 10, "mm")
 
 
+if __name__ == "__main__": 
 
+    try:      
+    #infinite loop that reads serial interface char by char
+        while True:
+            bytesToRead = ser.inWaiting()
+            lastByte = ser.read(1)
 
-# Main function to launch threads
-def main():
-    threading.Thread(target=gps_receiver_thread).start()
-    threading.Thread(target=ntrip_client_thread).start()
-
-if __name__ == "__main__":
-    main()
+            if lastByte[0] == 0xb5:
+                mlcounter = 0
+                parse_msg()
+                rawMessage.clear()
+                rawMessage.append(lastByte[0])
+                mlcounter += 1
+            else:
+                if mlcounter < 42:
+                    rawMessage.append(lastByte[0])
+                    mlcounter += 1
+    except KeyboardInterrupt : 
+        print("Interupted by User")
+        try: 
+            sys.exit(0)
+        except: 
+            os._exit(0)
