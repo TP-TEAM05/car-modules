@@ -14,22 +14,30 @@ def check_wifi_connection(interface="wlan0"):
     """
     try:
         # Use 'ip addr show' to check if the interface has an IP address
-        output = os.popen(f"ip addr show {interface}").read()
-        return "inet " in output
+        file = open("/sys/class/net/wlan0/operstate","r")
+        output = file.readline()
+        print(output)
+        file.close()
+        if output == "up\n":
+             print(True)
+             return True
+        else:
+             print(False)
+             return False
     except Exception as e:
         print(f"Error checking WiFi connection: {e}")
         return False
 
-ser = serial.Serial ("/dev/serial0", 115200)
+ser = serial.Serial ("/dev/serial0", 9600)
 
 # Define the IP address and port to listen on
-HOST = '192.168.1.49'
+HOST = '192.168.20.236'
 PORT = 12345
 
 # Create a socket for listening
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.bind((HOST, PORT))
-#sock.settimeout(0.001)
+sock.settimeout(0.10)
 data = bytes("<0,0,0>", "utf-8")
 
 
@@ -43,7 +51,10 @@ try:
                 ser.write(b"<0,0,0>")
                 time.sleep(0.1)  # Add a delay to prevent flooding the serial port
                 continue  # Skip the rest of the loop
-            data, addr = sock.recvfrom(13)
+            try:
+                data, addr = sock.recvfrom(13)
+            except socket.timeout:
+                 continue
             value = data.decode()
             print(f"Received value: {value}")
             ser.write(data) #Send data via serial
@@ -55,16 +66,7 @@ except KeyboardInterrupt:
     ser.close()
     print("Done")
 
-# handle socket timeout
-except socket.timeout:
-    while True:
-         print("Timeout")
-         ser.write(b"<0,0,0>")
 
-# handle socket error
-except socket.error as e:
-    while True:
-         print("Error: ", e)
-         ser.write(b"<0,0,0>")
+
 
 

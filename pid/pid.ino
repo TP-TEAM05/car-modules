@@ -226,11 +226,16 @@ void loop() {
     // else we go left
     dir_rightPct(percentageTurn);  
   }
+  
 
   // Compute PID
   myPID.Compute();
   
   int intOut = int(Output);
-  Serial.println(intOut);
+  //Serial.println(intOut);
+  if (intOut < 1540 && Setpoint == 0 && Input == 0.00) {
+    intOut = 1500;
+  }
+
   throttleServo.writeMicroseconds(intOut);
 }

@@ -4,7 +4,7 @@ import socket
 
 
 # Define the IP address and port to send data to localhost
-HOST = '192.168.1.49'
+HOST = '192.168.20.227'
 
 PORT = 12345
 
@@ -31,8 +31,12 @@ try:
                 if event.button == 5:
                     speed += step
                 elif event.button == 4:
-                    if speed - step >= 0:
+                    if speed > 0:
                         speed -= step
+                elif event.button == 2:
+                    speed = 0
+                    isLeft = 0
+                    turnThrottle = 0
             if event.type == pygame.JOYAXISMOTION:
                 # left stick
                 if event.axis == 0:
@@ -49,7 +53,7 @@ try:
                 
             if newIter and (event.type == pygame.JOYBUTTONDOWN or event.type == pygame.JOYAXISMOTION):
                 # send the data on socket in string format <isLeft,isForward, turnThrottle, isForward, throttle>
-                data = f"<{isLeft},{speed},{turnThrottle}>"
+                data = f"<{isLeft},{speed},{turnThrottle}>\r"
                 sock.sendto(data.encode(), (HOST, PORT))
                 print(data)
                 newIter = False
