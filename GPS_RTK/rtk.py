@@ -12,11 +12,12 @@ bs = "bs1"
 
 # Definition of one or multiple NTRIP base stations
 if bs=="bs1":
-    server = "rgeerg"
-    port = "ergerg"
-    mountpoint = "rgeertg"
-    username = "erggre"
-    password = "ererg"
+    bs = "rgeerg"
+    server = "ergerg"
+    port = "ergreg"
+    mountpoint = "ergerg"
+    username = "ergerg"
+    password = "fgweraerger"
 
 def getHTTPBasicAuthString(username,password):
     inputstring = username + ':' + password
