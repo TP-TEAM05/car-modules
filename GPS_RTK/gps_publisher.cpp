@@ -32,21 +32,15 @@ public:
         std::cout << "Publisher start" << std::endl;
     }
 
-    ~GpsPublisher()
-    {
-        close(ser);
-    }
-
 private:
     void timer_callback()
     {
         std_msgs::msg::String message;
-        // write message in format "<lat,lon,hacc> to message.data"
-        std::stringstream ss;
-        ss << "<" << globalLatitude << "," << globalLongitude << "," << globalHorizontalAccuracy << ">";
-        message.data = ss.str();
+        // write message in format "<lat,lon,hacc> to message.data, lat and lon need to have 7 decimal places, hacc 1 decimal places
+        std::ostringstream oss;
+        oss << "<" << std::fixed << std::setprecision(7) << globalLatitude << "," << std::fixed << std::setprecision(7) << globalLongitude << "," << std::fixed << std::setprecision(1) << globalHorizontalAccuracy << ">";
+        message.data = oss.str();
         publisher_->publish(message);
-        std::cout << "<" << globalLatitude << "," << globalLongitude << "," << globalHorizontalAccuracy << ">" << std::endl;
     }
 
     rclcpp::TimerBase::SharedPtr timer_;
@@ -69,6 +63,7 @@ bool ntripEnabled = true;
 void configureSerial();
 void gps_receiver_thread();
 void ntrip_client_thread();
+void ros_thread(int argc, char **argv);
 void parse_msg();
 void parse_velned();
 void parse_hpposllh();
@@ -76,26 +71,33 @@ std::string base64_encode(const unsigned char *data, size_t input_length);
 
 int main(int argc, char **argv)
 {
+    configureSerial();
+
     std::thread gpsThread(gps_receiver_thread);
     std::cout << "GPS Thread start" << std::endl;
+
+    std::thread rosThread(ros_thread, argc, argv);
+    std::cout << "ROS Thread start" << std::endl;
 
     if (ntripEnabled)
     {
         std::thread ntripThread(ntrip_client_thread);
         std::cout << "NTRIP Thread start" << std::endl;
+
         ntripThread.join();
     }
 
+    rosThread.join();
     gpsThread.join();
+    return 0;
+}
 
+void ros_thread(int argc, char **argv)
+{
     rclcpp::init(argc, argv);
     auto gps_publisher = std::make_shared<GpsPublisher>();
-    configureSerial();
     rclcpp::spin(gps_publisher);
-
     rclcpp::shutdown();
-
-    return 0;
 }
 
 void configureSerial()

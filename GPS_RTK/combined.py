@@ -1,5 +1,4 @@
 import sys
-import os
 import socket
 import base64
 import serial
@@ -9,7 +8,7 @@ from datetime import datetime
 import threading
 
 # Shared Serial port configuration
-tty = "COM3"
+tty = "/dev/ttyACM1"
 ser = serial.Serial(tty, 115200, timeout=2, xonxoff=False, rtscts=False, dsrdtr=False)
 ser.flushInput()
 ser.flushOutput()
@@ -53,11 +52,11 @@ def gps_receiver_thread():
 def ntrip_client_thread():
     bs = "bs1"
     if bs == "bs1":
-        server = "ergerg"
-        port = "ergreg"
-        mountpoint = "ergerg"
-        username = "ergerg"
-        password = "fgweraerger"
+        server = "147.175.80.248"
+        port = "2101"
+        mountpoint = "SUT1"
+        username = "ublox"
+        password = "ublox143"
 
     pwd = getHTTPBasicAuthString(username, password)
     header = f"GET /{mountpoint} HTTP/1.0\r\nUser-Agent: NTRIP u-blox\r\nAccept: */*\r\nAuthorization: Basic {pwd}\r\nConnection: close\r\n\r\n"
@@ -65,7 +64,7 @@ def ntrip_client_thread():
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((server, int(port)))
     s.send(header.encode('utf-8'))
-    resp = s.recv(1024)
+    resp = s.recv(1024) 
     print(resp)
 
     if resp.startswith(b"STREAMTABLE"):
@@ -81,7 +80,8 @@ def ntrip_client_thread():
                 break
             print("Written RTK")
             ser.write(data)
-            sys.stdout.flush()
+            logging.info("RTK data written to serial")
+            #sys.stdout.flush()
     finally:
         s.close()
 
