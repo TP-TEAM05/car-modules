@@ -86,10 +86,10 @@ private:
 
     // parsing the data to JSON
     const std ::string message = msg.data; // here we expect to come data as <A,B,C,D,E,F,G,H,I>
-    std::string vin, longitude, latitude, dist_ultrasonic, dist_lidar, speed_front_left, speed_front_right, speed_rear_left, speed_rear_right, speed_mean;
+    std::string vin, dist_ultrasonic_front, dist_ultrasonic_rear, dist_lidar, speed_front_left, speed_front_right, speed_rear_left, speed_rear_right, speed_mean;
 
-    sscanf(message.c_str(), "<%[^,],%[^,],%[^,],%[^,],%[^,],%[^,],%[^,],%[^,],%[^>]>", &dist_ultrasonic[0], &dist_lidar[0], &speed_front_left[0], &speed_rear_right[0],
-           &speed_rear_left[0], &speed_front_right[0], &speed_mean[0], &longitude[0], &latitude[0]);
+    sscanf(message.c_str(), "<%[^,],%[^,],%[^,],%[^,],%[^,],%[^,],%[^,],%[^,]>", &dist_ultrasonic_front[0], &dist_ultrasonic_rear[0], &dist_lidar[0], &speed_front_left[0], &speed_rear_right[0],
+           &speed_rear_left[0], &speed_front_right[0], &speed_mean[0]);
 
     vin = "C4RF117S7U0000001";
 
@@ -110,13 +110,14 @@ private:
     vehicle["longitude"] = lon;
     vehicle["latitude"] = lat;
     vehicle["gps_direction"] = 100;
-    vehicle["front_ultrasonic"] = std::stof(dist_ultrasonic);
-    vehicle["rear_ultrasonic"] = 56;
+    vehicle["front_ultrasonic"] = std::stof(dist_ultrasonic_front);
+    vehicle["rear_ultrasonic"] = std::stof(dist_ultrasonic_rear);
     vehicle["front_lidar"] = std::stof(dist_lidar);
     vehicle["speed_front_left"] = std::stof(speed_front_left);
     vehicle["speed_front_right"] = std::stof(speed_front_right);
     vehicle["speed_rear_left"] = std::stof(speed_rear_left);
     vehicle["speed_rear_right"] = std::stof(speed_rear_right);
+    vehicle["hacc"] = hacc;
     json_to_send["vehicle"] = vehicle;
 
     std::string str_to_send = json_to_send.dump();
@@ -142,7 +143,6 @@ private:
     // parsing the data to global variables
     const std ::string message = msg.data;
     sscanf(message.c_str(), "<%f,%f,%f>", &lon_local, &lat_local, &hacc_local);
-
     lon = lon_local;
     lat = lat_local;
     hacc = hacc_local;

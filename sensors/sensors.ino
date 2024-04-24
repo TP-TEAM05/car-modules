@@ -1,7 +1,6 @@
 #include <SoftwareSerial.h>
 #include "TFMini.h"
 #include <cmath> // For M_PI
-#include <TinyGPS++.h>
 
 
 #define diameterCm 12
@@ -38,7 +37,23 @@ volatile float distanceFinal = 0.0;
 volatile float gpsLon = 17.071734;
 volatile float gpsLat = 48.153435;
 
-char buffer[80];
+
+unsigned int HighByte1 = 0;
+unsigned int LowByte1 = 0;
+unsigned int HighByte2 = 0;
+unsigned int LowByte2 = 0;
+volatile float rearLen = 0.0;
+volatile float frontLen = 0.0;
+
+// Timing variables to control measurement and delay without blocking
+unsigned long lastMeasurementTime1 = 0;
+unsigned long lastMeasurementTime2 = 0;
+const long measurementInterval = 10; // Time between measurements
+const long readDelay = 50; // Delay after triggering measurement
+bool waitingForRead1 = false; // State to track if we are waiting to read data
+bool waitingForRead2 = false; // State to track if we are waiting to read data
+
+char buffer[200];
 char buffer2[80];
 
 TFMini tfmini;
@@ -47,11 +62,10 @@ SoftwareSerial SerialTFMini(6,7); //The only value that matters here is the firs
 // serial(1) = pin12=RX, pin13=TX
 // serial(2) = pin16=RX green, pin17=TX white
 
-TinyGPSPlus gps;
-
-SoftwareSerial GPSSerial(8,9);
 
 SoftwareSerial HallSerial(10,11);
+SoftwareSerial UltraSerial1(12,13); 
+SoftwareSerial UltraSerial2(14,15);
 
 
 void calculateSpeed(volatile unsigned long &lastTriggerTime, volatile float &lastValidSpeed, int sensorPin) {
@@ -139,80 +153,76 @@ void lidarLoop() {
   delay(25);
 }
 
-
-void displayGPSInfo() {
-  // Display basic information
-  //Serial.print(F("Location: ")); 
-  if (gps.location.isValid()) {
-    gpsLat = gps.location.lat();
-    gpsLon = gps.location.lng();
-    /*Serial.print(gps.location.lat(), 6);
-    Serial.print(F(","));
-    Serial.print(gps.location.lng(), 6);*/
-  } else {
-    gpsLat = 48.153435;
-    gpsLon = 17.071734;
-    //Serial.print(F("INVALID"));
-  }
-/*
-  //Serial.print(F("  Date/Time: "));
-  if (gps.date.isValid()) {
-    Serial.print(gps.date.month());
-    Serial.print(F("/"));
-    Serial.print(gps.date.day());
-    Serial.print(F("/"));
-    Serial.print(gps.date.year());
-  } else {
-    Serial.print(F("INVALID"));
+void ultraLoop1() {
+  unsigned long currentTime = millis();
+  
+  // Check if it's time to take a new measurement
+  if (!waitingForRead1 && currentTime - lastMeasurementTime1 >= measurementInterval) {
+    lastMeasurementTime1 = currentTime;
+    UltraSerial1.flush();
+    UltraSerial1.write(0X55); // Trigger US-100 to measure distance
+    waitingForRead1 = true;
   }
 
-  //Serial.print(F(" "));
-  if (gps.time.isValid()) {
-    if (gps.time.hour() < 10) Serial.print(F("0"));
-    Serial.print(gps.time.hour());
-    Serial.print(F(":"));
-    if (gps.time.minute() < 10) Serial.print(F("0"));
-    Serial.print(gps.time.minute());
-    //Serial.print(F(":"));
-    if (gps.time.second() < 10) Serial.print(F("0"));
-    Serial.print(gps.time.second());
-    //Serial.print(F("."));
-    if (gps.time.centisecond() < 10) Serial.print(F("0"));
-    //Serial.print(gps.time.centisecond());
-  } else {
-    //Serial.print(F("INVALID"));
-  }
-
-  //Serial.println();*/
-}
-
-void gpsLoop() {
-  while (GPSSerial.available() > 0) {
-    if (gps.encode(GPSSerial.read())) {
-      displayGPSInfo(); // Once we get a full sentence, display the info
+  // Wait for readDelay time before attempting to read data
+  if (waitingForRead1 && currentTime - lastMeasurementTime1 >= readDelay) {
+    if (UltraSerial1.available() >= 2) { // Check if 2 bytes are available to read
+      
+      HighByte1 = UltraSerial1.read();
+      LowByte1 = UltraSerial1.read();
+      frontLen = HighByte1 * 256 + LowByte1; // Calculate the distance
+      
+      waitingForRead1 = false; // Reset the read waiting flag
+    }
+    else {
+      // No data available yet, check again in the next loop iteration
+      waitingForRead1 = false; // Allow re-triggering the measurement if no data was read
     }
   }
-
-  // If we haven't received any data in a while, show a message.
-  if (millis() > 5000 && gps.charsProcessed() < 10) {
-    Serial.println(F("No GPS detected: check wiring."));
-    while(true);
-  }
 }
 
+void ultraLoop2() {
+  unsigned long currentTime = millis();
+  
+  // Check if it's time to take a new measurement
+  if (!waitingForRead2 && currentTime - lastMeasurementTime2 >= measurementInterval) {
+    lastMeasurementTime2 = currentTime;
+    UltraSerial2.flush();
+    UltraSerial2.write(0X55); // Trigger US-100 to measure distance
+    waitingForRead2 = true;
+  }
+
+  // Wait for readDelay time before attempting to read data
+  if (waitingForRead2 && currentTime - lastMeasurementTime2 >= readDelay) {
+    if (UltraSerial2.available() >= 2) { // Check if 2 bytes are available to read
+      
+      HighByte2 = UltraSerial2.read();
+      LowByte2 = UltraSerial2.read();
+      rearLen = HighByte2 * 256 + LowByte2; // Calculate the distance
+      
+      waitingForRead2 = false; // Reset the read waiting flag
+    }
+    else {
+      // No data available yet, check again in the next loop iteration
+      waitingForRead2 = false; // Allow re-triggering the measurement if no data was read
+    }
+  }
+}
 
 void setup() {
   Serial.begin(9600);
   Serial1.begin(115200);
-  GPSSerial.begin(115200);
   HallSerial.begin(115200);
+  UltraSerial1.begin(9600);
+  UltraSerial2.begin(9600);
   while (!Serial1);
+  while (!UltraSerial1);
+  while (!UltraSerial2);
   pinMode(hallSensorPin1, INPUT_PULLUP);
   pinMode(hallSensorPin2, INPUT_PULLUP);
   pinMode(hallSensorPin3, INPUT_PULLUP);
   pinMode(hallSensorPin4, INPUT_PULLUP);
   lidarSetup();
-  //ultraSetup();
   attachInterrupt(digitalPinToInterrupt(hallSensorPin1), ISR_sensor1, FALLING);
   attachInterrupt(digitalPinToInterrupt(hallSensorPin2), ISR_sensor2, FALLING);
   attachInterrupt(digitalPinToInterrupt(hallSensorPin3), ISR_sensor3, FALLING);
@@ -222,18 +232,17 @@ void setup() {
 
 void loop() {
   lidarLoop();
-  //ultraLoop();
-  gpsLoop();
+  ultraLoop1();
+  ultraLoop2();
   volatile float meanSpeed;
   if (lastValidSpeed1 == 0.00 && lastValidSpeed3 == 0.00) {
     meanSpeed = (lastValidSpeed2 + lastValidSpeed4) / 2;
-  } else {
+  } else { 
     meanSpeed = (lastValidSpeed1 + lastValidSpeed2 + lastValidSpeed3 + lastValidSpeed4) / 4;
   }
     
-  int len = snprintf(buffer, sizeof(buffer), "<0.00,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.6f,%0.6f>\r", distanceFinal, lastValidSpeed1, lastValidSpeed2, lastValidSpeed3,lastValidSpeed4, meanSpeed, gpsLon, gpsLat);
+  int len = snprintf(buffer, sizeof(buffer), "<%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f>\r\n", frontLen / 10, rearLen / 10, distanceFinal, lastValidSpeed1, lastValidSpeed2, lastValidSpeed3,lastValidSpeed4, meanSpeed);
   int len2 = snprintf(buffer2, sizeof(buffer2), "<%0.2f,>\r",meanSpeed);
   HallSerial.write(buffer2, len2);
   Serial.write(buffer, len);
-  //Serial.write(buffer, len);
 }

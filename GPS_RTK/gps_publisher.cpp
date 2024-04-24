@@ -38,7 +38,7 @@ private:
         std_msgs::msg::String message;
         // write message in format "<lat,lon,hacc> to message.data, lat and lon need to have 7 decimal places, hacc 1 decimal places
         std::ostringstream oss;
-        oss << "<" << std::fixed << std::setprecision(7) << globalLatitude << "," << std::fixed << std::setprecision(7) << globalLongitude << "," << std::fixed << std::setprecision(1) << globalHorizontalAccuracy << ">";
+        oss << "<" << std::fixed << std::setprecision(7) << globalLongitude << "," << std::fixed << std::setprecision(7) << globalLatitude << "," << std::fixed << std::setprecision(1) << globalHorizontalAccuracy << ">";
         message.data = oss.str();
         publisher_->publish(message);
     }
@@ -74,15 +74,11 @@ int main(int argc, char **argv)
     configureSerial();
 
     std::thread gpsThread(gps_receiver_thread);
-    std::cout << "GPS Thread start" << std::endl;
-
     std::thread rosThread(ros_thread, argc, argv);
-    std::cout << "ROS Thread start" << std::endl;
 
     if (ntripEnabled)
     {
         std::thread ntripThread(ntrip_client_thread);
-        std::cout << "NTRIP Thread start" << std::endl;
 
         ntripThread.join();
     }
@@ -94,6 +90,7 @@ int main(int argc, char **argv)
 
 void ros_thread(int argc, char **argv)
 {
+    std::cout << "ROS Thread start" << std::endl;
     rclcpp::init(argc, argv);
     auto gps_publisher = std::make_shared<GpsPublisher>();
     rclcpp::spin(gps_publisher);
@@ -145,7 +142,7 @@ void configureSerial()
 
 void gps_receiver_thread()
 {
-    std::cout << "Hello UBX, let's get the data!" << std::endl;
+    std::cout << "GPS Thread start" << std::endl;
     int mlcounter = 0;
 
     while (true)
@@ -327,6 +324,8 @@ std::string base64_encode(const unsigned char *data, size_t input_length)
 }
 void ntrip_client_thread()
 {
+    std::cout << "NTRIP Thread start" << std::endl;
+
     const char *server = "147.175.80.248";
     const int port = 2101;
     const std::string mountpoint = "SUT1";
@@ -339,7 +338,7 @@ void ntrip_client_thread()
     int sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock < 0)
     {
-        std::cerr << "Socket creation failed" << std::endl;
+        std::cout << "Socket creation failed" << std::endl;
         return;
     }
 
@@ -350,14 +349,14 @@ void ntrip_client_thread()
 
     if (inet_pton(AF_INET, server, &serverAddr.sin_addr) <= 0)
     {
-        std::cerr << "Invalid address/ Address not supported" << std::endl;
+        std::cout << "Invalid address/ Address not supported" << std::endl;
         close(sock);
         return;
     }
 
     if (connect(sock, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0)
     {
-        std::cerr << "Connection Failed" << std::endl;
+        std::cout << "Connection Failed" << std::endl;
         close(sock);
         return;
     }
@@ -369,6 +368,21 @@ void ntrip_client_thread()
     request += "Connection: close\r\n\r\n";
 
     send(sock, request.c_str(), request.size(), 0);
+
+    // check if response starts with ICY 200 OK
+    if (recv(sock, rawMessage.data(), 3, 0) < 0)
+    {
+        std::cout << "Error reading from socket" << std::endl;
+        close(sock);
+        return;
+    }
+
+    if (rawMessage[0] != 'I' || rawMessage[1] != 'C' || rawMessage[2] != 'Y')
+    {
+        std::cout << "Invalid response" << std::endl;
+        close(sock);
+        return;
+    }
 
     const int bufferSize = 1024;
     char buffer[bufferSize];
