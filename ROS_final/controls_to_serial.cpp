@@ -16,7 +16,7 @@ using std::placeholders::_1;
 using namespace std::chrono_literals;
 
 void loadParams(std::string& dev_name){
-  std::ifstream file("/home/reco1/ros2_ws/src/car_serial_publisher/src/serial_write_config");
+  std::ifstream file("/home/ubuntu/ros2_ws/src/car_to_backend/src/serial_write_config");
 
   if (!file){
       perror("Serial config file not found");

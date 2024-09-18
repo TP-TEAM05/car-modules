@@ -15,7 +15,7 @@
 using namespace std::chrono_literals;
 
 void loadParams(std::string& dev_name){
-  std::ifstream file("/home/reco1/ros2_ws/src/car_serial_publisher/src/serial_read_config");
+  std::ifstream file("/home/ubuntu/ros2_ws/src/car_to_backend/src/serial_read_config");
 
   if (!file){
       perror("Serial config file not found");
@@ -106,7 +106,7 @@ private:
     auto message = std_msgs::msg::String();
     message.data = buf_str;
 
-    //RCLCPP_INFO(this->get_logger(), "DATA from RPI PICO: '%s'", buffer);
+    RCLCPP_INFO(this->get_logger(), "DATA from RPI PICO: '%s'", buffer);
     
     publisher_->publish(message);
     //usleep(9500);

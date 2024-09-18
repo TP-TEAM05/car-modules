@@ -35,7 +35,7 @@ bool interfaceIsUp(const std::string& interfaceName){
 }
 
 void loadParams(std::string& ip, std::string& port){
-  std::ifstream file("/home/reco1/ros2_ws/src/car_serial_publisher/src/udp_server_config");
+  std::ifstream file("/home/ubuntu/ros2_ws/src/car_to_backend/src/udp_server_config");
 
   if (!file){
       perror("UDP server config file not found");

@@ -26,7 +26,7 @@ using json = nlohmann::ordered_json;
 #define IP_ADDR "192.168.20.200"
 
 float lon, lat, hacc;
-uint32_t gps_direction;
+int gps_direction;
 
 void loadParams(std::string &ip, std::string &port)
 {
@@ -92,7 +92,7 @@ private:
     sscanf(message.c_str(), "<%[^,],%[^,],%[^,],%[^,],%[^,],%[^,],%[^,],%[^,]>", &dist_ultrasonic_front[0], &dist_ultrasonic_rear[0], &dist_lidar[0], &speed_front_left[0], &speed_rear_right[0],
            &speed_rear_left[0], &speed_front_right[0], &speed_mean[0]);
 
-    vin = "C4RF117S7U0000001";
+    vin = "C4RF117S7U0000002";
 
     boost::posix_time::ptime t = boost::posix_time::microsec_clock::universal_time();
     std::string timestamp_iso = to_iso_extended_string(t) + "Z";
@@ -138,14 +138,14 @@ private:
   void gps_callback(const std_msgs::msg::String &msg)
   {
     float lon_local, lat_local, hacc_local;
-    uint32_t gps_direction_local;
+    int gps_direction_local;
     std::vector<uint8_t>
         buffer;
     // RCLCPP_INFO(this->get_logger(), "I heard from GPS: '%s'", msg.data.c_str());
 
     // parsing the data to global variables
     const std ::string message = msg.data;
-    sscanf(message.c_str(), "<%f,%f,%f,%u>", &lon_local, &lat_local, &hacc_local, &gps_direction_local);
+    sscanf(message.c_str(), "<%f,%f,%f,%i>", &lon_local, &lat_local, &hacc_local, &gps_direction_local);
     lon = lon_local;
     lat = lat_local;
     hacc = hacc_local;
