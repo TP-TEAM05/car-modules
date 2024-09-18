@@ -4,7 +4,7 @@ import socket
 
 
 # Define the IP address and port to send data to localhost
-HOST = '192.168.1.49'
+HOST = '192.168.20.228'
 
 PORT = 12345
 

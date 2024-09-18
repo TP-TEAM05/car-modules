@@ -1,6 +1,6 @@
+import json
 import socket
 import serial
-import RPi.GPIO as GPIO
 import time
 import threading
 import os
@@ -28,10 +28,10 @@ def check_wifi_connection(interface="wlan0"):
         print(f"Error checking WiFi connection: {e}")
         return False
 
-ser = serial.Serial ("/dev/serial0", 9600)
+ser = serial.Serial ("/dev/serial0", 115200)
 
 # Define the IP address and port to listen on
-HOST = '10.10.10.102'
+HOST = '192.168.20.222'
 PORT = 12345
 
 # Create a socket for listening
@@ -41,27 +41,32 @@ sock.settimeout(0.10)
 data = bytes("<0,0,0>", "utf-8")
 
 
-
 try:  
     print("Ready!")
     while True:
+            """
             if not check_wifi_connection():
                 # If there's no WiFi connection, send "<0,0,0,0>" to the serial
                 print("WiFi connection lost. Sending <0,00> to serial.")
                 ser.write(b"<0,0,0>")
                 time.sleep(0.1)  # Add a delay to prevent flooding the serial port
                 continue  # Skip the rest of the loop
+            """
             try:
-                data, addr = sock.recvfrom(13)
+                data, addr = sock.recvfrom(300)
             except socket.timeout:
                  continue
             value = data.decode()
             print(f"Received value: {value}")
-            ser.write(data) #Send data via serial
-            
+
+            #value is JSON string, parse it
+            value = json.loads(value)
+            #value is now dictionary
+            print(value["updateVehicleDecision"]["message"])
+
+            ser.write(value["updateVehicleDecision"]["message"].encode()) #Send data via serial
 except KeyboardInterrupt:
     # Cleanup when the program is terminated
-    GPIO.cleanup()
     sock.close()
     ser.close()
     print("Done")

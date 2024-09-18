@@ -22,6 +22,14 @@ double globalLongitude = 0.0;
 double globalLatitude = 0.0;
 double globalHorizontalAccuracy = 0.0;
 
+// Global variables
+std::vector<uint8_t> rawMessage(42);
+int globalGroundSpeed = 0;
+uint32_t globalCourse = 0;
+bool print_hpposllh = false;
+bool print_velned = false;
+bool ntripEnabled = true;
+
 class GpsPublisher : public rclcpp::Node
 {
 public:
@@ -38,7 +46,7 @@ private:
         std_msgs::msg::String message;
         // write message in format "<lat,lon,hacc> to message.data, lat and lon need to have 7 decimal places, hacc 1 decimal places
         std::ostringstream oss;
-        oss << "<" << std::fixed << std::setprecision(7) << globalLongitude << "," << std::fixed << std::setprecision(7) << globalLatitude << "," << std::fixed << std::setprecision(1) << globalHorizontalAccuracy << ">";
+        oss << "<" << std::fixed << std::setprecision(7) << globalLongitude << "," << std::fixed << std::setprecision(7) << globalLatitude << "," << std::fixed << std::setprecision(1) << globalHorizontalAccuracy << "," << std::fixed << std::setprecision(1) << globalCourse << ">";
         message.data = oss.str();
         publisher_->publish(message);
     }
@@ -50,14 +58,6 @@ private:
 // Configuration and Initialization
 std::string tty = "/dev/ttyACM1";
 int ser;
-
-// Global variables
-std::vector<uint8_t> rawMessage(42);
-int globalGroundSpeed = 0;
-int globalCourse = 0;
-bool print_hpposllh = false;
-bool print_velned = false;
-bool ntripEnabled = true;
 
 // Function declarations
 void configureSerial();
@@ -196,22 +196,23 @@ void parse_velned()
 {
     if (rawMessage.size() == 42 && rawMessage[3] == 0x12)
     {
-        int32_t gSpeed, gSAcc, course, gCAcc;
+        std::vector<uint8_t> bytes_gSpeed(rawMessage.begin() + 26, rawMessage.begin() + 30);
+        int32_t gSpeed = *reinterpret_cast<const int32_t *>(bytes_gSpeed.data());
 
-        std::memcpy(&gSpeed, &rawMessage[26], 4);
-        std::memcpy(&gSAcc, &rawMessage[34], 4);
-        std::memcpy(&course, &rawMessage[30], 4);
-        std::memcpy(&gCAcc, &rawMessage[38], 4);
+        std::vector<uint8_t> bytes_gSAcc(rawMessage.begin() + 34, rawMessage.begin() + 38);
+        int32_t gSAcc = *reinterpret_cast<const int32_t *>(bytes_gSAcc.data());
 
-        // Adjust endianess if necessary
-        gSpeed = __builtin_bswap32(gSpeed);
-        gSAcc = __builtin_bswap32(gSAcc);
-        course = __builtin_bswap32(course);
-        gCAcc = __builtin_bswap32(gCAcc);
+        std::vector<uint8_t> bytes_course(rawMessage.begin() + 30, rawMessage.begin() + 34);
+        int32_t course = *reinterpret_cast<const int32_t *>(bytes_course.data());
+
+        std::vector<uint8_t> bytes_gCAcc(rawMessage.begin() + 38, rawMessage.end());
+        int32_t gCAcc = *reinterpret_cast<const int32_t *>(bytes_gCAcc.data());
 
         if (gSpeed < 50000)
         {
             globalGroundSpeed = gSpeed;
+            // convert course to degrees from radians, use std::numbers::pi
+            // globalCourse = course * 180 / 3.14159265358979323846;
             globalCourse = course;
         }
 
@@ -224,6 +225,55 @@ void parse_velned()
             std::cout << "Ground speed accuracy: " << gSAcc << std::endl;
             std::cout << "Course: " << course / 100000.0 << std::endl;
             std::cout << "Course accuracy: " << gCAcc / 10000.0 << std::endl;
+        }
+    }
+}
+
+void parse_velne()
+{
+    if (rawMessage.size() == 42)
+    {
+        if (rawMessage[3] == 0x12)
+        {
+            std::vector<uint8_t> bytes_gSpeed(rawMessage.begin() + 26, rawMessage.begin() + 30);
+            int32_t gSpeed = *reinterpret_cast<const int32_t *>(bytes_gSpeed.data());
+
+            std::vector<uint8_t> bytes_gSAcc(rawMessage.begin() + 34, rawMessage.begin() + 38);
+            int32_t gSAcc = *reinterpret_cast<const int32_t *>(bytes_gSAcc.data());
+
+            std::vector<uint8_t> bytes_course(rawMessage.begin() + 30, rawMessage.begin() + 34);
+            int32_t course = *reinterpret_cast<const int32_t *>(bytes_course.data());
+
+            std::vector<uint8_t> bytes_gCAcc(rawMessage.begin() + 38, rawMessage.end());
+            int32_t gCAcc = *reinterpret_cast<const int32_t *>(bytes_gCAcc.data());
+
+            time_t now = time(nullptr);
+            char current_time[80];
+            char seconds[80];
+            strftime(current_time, sizeof(current_time), "%Y/%m/%d %H:%M:%S", localtime(&now));
+            std::sprintf(seconds, ".%06ld", std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count() % 1000000);
+
+            if (gSpeed < 50000)
+            {
+                globalGroundSpeed = gSpeed;
+                globalCourse = course;
+            }
+            // client.resend_raw_gps(...) // uncomment this line and replace with your implementation
+
+            uint8_t data[] = {bytes_gSpeed[0], bytes_gSpeed[1], bytes_gSpeed[2], bytes_gSpeed[3], bytes_course[0], bytes_course[1], bytes_course[2], bytes_course[3]};
+            // can::Message canmsg(0x0C, data, sizeof(data));
+            // canbus.send(canmsg);
+
+            if (print_velned == 1)
+            {
+                std::cout << "# # # # # # # # # # # # # # #" << std::endl;
+                std::cout << "NAV_VELNED found" << std::endl;
+                std::cout << "Date Time: " << current_time << seconds << std::endl;
+                std::cout << "Ground speed: " << gSpeed * 3.6 / 10 << std::endl;
+                std::cout << "Ground speed accuracy: " << gSAcc << std::endl;
+                std::cout << "Course: " << course / 100000 << std::endl;
+                std::cout << "Course accuracy: " << gCAcc / 10000 << std::endl;
+            }
         }
     }
 }

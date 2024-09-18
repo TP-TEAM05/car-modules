@@ -1,10 +1,11 @@
 import time
 import pygame
 import socket
+import json
 
 
 # Define the IP address and port to send data to localhost
-HOST = '192.168.20.227'
+HOST = '192.168.20.222'
 
 PORT = 12345
 
@@ -25,7 +26,7 @@ newIter= False
 try:
     while True:
         newIter = True
-        for event in pygame.event.get():
+        for event in pygame.event.get():    
             #print(event)
             if event.type == pygame.JOYBUTTONDOWN:
                 if event.button == 5:
@@ -36,25 +37,31 @@ try:
                 elif event.button == 2:
                     speed = 0
                     isLeft = 0
-                    turnThrottle = 0
+                    turnThrottle = 95
             if event.type == pygame.JOYAXISMOTION:
                 # left stick
                 if event.axis == 0:
                     if event.value < 0:
                         isLeft = 1
-                        turnThrottle = int(round(abs(event.value), 2) * 100)
+                        # turnThrottle from 91-180, remap from -1 to 0 to 91 to 180
+                        turnThrottle = int(95 + (90 * event.value))
+
                     elif event.value > 0:
                         isLeft = 0
-                        turnThrottle = int(round(abs(event.value), 2) * 100)
+                        turnThrottle = int(95 + (90 * event.value))
                     else:
                         isLeft = 0
-                        turnThrottle = 0
+                        turnThrottle = 95
 
                 
             if newIter and (event.type == pygame.JOYBUTTONDOWN or event.type == pygame.JOYAXISMOTION):
                 # send the data on socket in string format <isLeft,isForward, turnThrottle, isForward, throttle>
-                data = f"<{isLeft},{speed},{turnThrottle}>\r"
-                sock.sendto(data.encode(), (HOST, PORT))
+        
+                data = f"<{speed},{turnThrottle}>\r"
+                json_data = json.dumps({"updateVehicleDecision": {"message": data}})
+
+
+                sock.sendto(json_data.encode(), (HOST, PORT))
                 print(data)
                 newIter = False
                     #time.sleep(0.1)

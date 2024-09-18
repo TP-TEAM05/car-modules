@@ -3,8 +3,8 @@ import base64
 import sys
 import serial
 tty = "COM12"
-ser = serial.Serial(tty, 115200, timeout=2, xonxoff=False, rtscts=False, dsrdtr=False)
-ser.flush()
+#ser = serial.Serial(tty, 115200, timeout=2, xonxoff=False, rtscts=False, dsrdtr=False)
+#ser.flush()
 
 bs = "bs1"
 
@@ -12,12 +12,11 @@ bs = "bs1"
 
 # Definition of one or multiple NTRIP base stations
 if bs=="bs1":
-    bs = "rgeerg"
-    server = "ergerg"
-    port = "ergreg"
-    mountpoint = "ergerg"
-    username = "ergerg"
-    password = "fgweraerger"
+    server = "147.175.80.248"
+    port = "2101"
+    mountpoint = "SUT1"
+    username = "ublox"
+    password = "ublox143"
 
 def getHTTPBasicAuthString(username,password):
     inputstring = username + ':' + password
@@ -60,12 +59,13 @@ try:
         #    continue
         
         data = s.recv(1024)
+        print(data)
         
         if not data:
             exit()
         
-        ret = ser.write(data)
-        print(ret)
+        #ret = ser.write(data)
+        #print(ret)
         #print >>sys.stderr, [ord(d) for d in data]
         sys.stdout.flush()
 

@@ -20,10 +20,10 @@ def check_wifi_connection(interface="wlan0"):
         print(f"Error checking WiFi connection: {e}")
         return False
 
-ser = serial.Serial ("/dev/serial0", 115200)
+ser = serial.Serial ("/dev/ttyAMA0", 115200)
 
 # Define the IP address and port to listen on
-HOST = '192.168.1.49'
+HOST = '192.168.20.228'
 PORT = 12345
 
 # Create a socket for listening

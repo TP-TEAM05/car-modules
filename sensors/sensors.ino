@@ -230,19 +230,29 @@ void setup() {
   //Serial.println("Initializing....");
 }
 
+
 void loop() {
   lidarLoop();
   ultraLoop1();
   ultraLoop2();
-  volatile float meanSpeed;
-  if (lastValidSpeed1 == 0.00 && lastValidSpeed3 == 0.00) {
-    meanSpeed = (lastValidSpeed2 + lastValidSpeed4) / 2;
-  } else { 
-    meanSpeed = (lastValidSpeed1 + lastValidSpeed2 + lastValidSpeed3 + lastValidSpeed4) / 4;
+  
+  volatile unsigned long currentTime = micros(); // Get current time once for efficiency
+
+  // Check if more than 2 seconds have passed since the last trigger for each sensor
+  if (currentTime - lastTriggerTime3 > 2000000) {
+    lastValidSpeed1 = 0.0; // Reset the last valid speed if no trigger within 2 seconds
+    lastValidSpeed2 = 0.0; // Reset the last valid speed if no trigger within 2 seconds
+    lastValidSpeed3 = 0.0; // Reset the last valid speed if no trigger within 2 seconds
+    lastValidSpeed4 = 0.0; // Reset the last valid speed if no trigger within 2 seconds
   }
+  
+  volatile float meanSpeed;
+  meanSpeed = (lastValidSpeed3 + lastValidSpeed4) / 2;
+
     
-  int len = snprintf(buffer, sizeof(buffer), "<%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f>\r\n", frontLen / 10, rearLen / 10, distanceFinal, lastValidSpeed1, lastValidSpeed2, lastValidSpeed3,lastValidSpeed4, meanSpeed);
+  int len = snprintf(buffer, sizeof(buffer), "<%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f>\r\n", frontLen / 10, rearLen / 10, distanceFinal, lastValidSpeed3, lastValidSpeed3, lastValidSpeed4,lastValidSpeed4, meanSpeed);
   int len2 = snprintf(buffer2, sizeof(buffer2), "<%0.2f,>\r",meanSpeed);
   HallSerial.write(buffer2, len2);
   Serial.write(buffer, len);
 }
+

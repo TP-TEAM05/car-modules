@@ -54,7 +54,7 @@ private:
 };
 
 // Configuration and Initialization
-std::string tty = "/dev/ttyACM1";
+std::string tty = "/dev/ttyACM0";
 int ser;
 
 // Global variables

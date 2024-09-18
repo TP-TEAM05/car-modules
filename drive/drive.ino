@@ -200,6 +200,7 @@ void setup()
   Serial1.begin(115200);
   // Initalize the Serial commication with connected Serial Monitor (e.g. in Arduino IDE)
   Serial.begin(9600);
+
 }
 
 
@@ -209,6 +210,7 @@ void setup()
 // Function runs with every loop of the program
 void loop()
 {
+    Serial.println("Waiting");
     // Wait to receive data
     recvWithStartEndMarkers();
     if (newData == true) {
