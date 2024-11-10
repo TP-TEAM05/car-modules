@@ -5,6 +5,11 @@
 ### Requirements:
 - SD card with Ubuntu server 22.04 64-bit installed (using RPi Imager)
 - enabled SSH & internet connection (configured in RPi Imager)
+- Arduino RP2040 Boards
+
+```
+https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json
+```
 
 ### ROS2 Humble installation
 
