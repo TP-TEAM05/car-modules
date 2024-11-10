@@ -1,7 +1,7 @@
 #include <SoftwareSerial.h>
 #include "TFMini.h"
 #include <cmath> // For M_PI
-
+#include "voltage.h"
 
 #define diameterCm 12
 #define millisToHours 3600000.00
@@ -23,6 +23,11 @@ volatile float lastValidSpeed2 = 0.0;
 volatile float lastValidSpeed3 = 0.0;
 volatile float lastValidSpeed4 = 0.0;
 
+// Voltmeter variables
+volatile float adc0voltage = 0.0;
+volatile float adc1voltage = 0.0;
+volatile float adc2voltage = 0.0;
+
 // Wheel diameter in meters (0.12m)
 const float wheelDiameter = 0.12;
 // Calculate circumference (C = pi * d) using M_PI for Pi
@@ -32,11 +37,6 @@ const float wheelCircumference = M_PI * wheelDiameter;
 const float maxSpeedChange = 10.0;
 
 volatile float distanceFinal = 0.0;
-
-// Default is the position of FIIT STU
-volatile float gpsLon = 17.071734;
-volatile float gpsLat = 48.153435;
-
 
 unsigned int HighByte1 = 0;
 unsigned int LowByte1 = 0;
@@ -83,13 +83,7 @@ void calculateSpeed(volatile unsigned long &lastTriggerTime, volatile float &las
 }
 
 
-void ISR_sensor1() {
-  calculateSpeed(lastTriggerTime1, lastValidSpeed1, 1);
-  /*int len = snprintf(buffer, sizeof(buffer), "%0.2f,%0.2f,%0.2f,%0.2f", lastValidSpeed1, lastValidSpeed2,lastValidSpeed3,lastValidSpeed4);
-  Serial.write(buffer);
-  Serial.println();*/
-}
-
+void ISR_sensor1() { calculateSpeed(lastTriggerTime1, lastValidSpeed1, 1); }
 void ISR_sensor2() { calculateSpeed(lastTriggerTime2, lastValidSpeed2, 2); }
 void ISR_sensor3() { calculateSpeed(lastTriggerTime3, lastValidSpeed3, 3); }
 void ISR_sensor4() { calculateSpeed(lastTriggerTime4, lastValidSpeed4, 4); }
@@ -223,11 +217,11 @@ void setup() {
   pinMode(hallSensorPin3, INPUT_PULLUP);
   pinMode(hallSensorPin4, INPUT_PULLUP);
   lidarSetup();
+  initVoltmeter();
   attachInterrupt(digitalPinToInterrupt(hallSensorPin1), ISR_sensor1, FALLING);
   attachInterrupt(digitalPinToInterrupt(hallSensorPin2), ISR_sensor2, FALLING);
   attachInterrupt(digitalPinToInterrupt(hallSensorPin3), ISR_sensor3, FALLING);
   attachInterrupt(digitalPinToInterrupt(hallSensorPin4), ISR_sensor4, FALLING);
-  //Serial.println("Initializing....");
 }
 
 
@@ -235,7 +229,9 @@ void loop() {
   lidarLoop();
   ultraLoop1();
   ultraLoop2();
-  
+  readVoltages();
+
+
   volatile unsigned long currentTime = micros(); // Get current time once for efficiency
 
   // Check if more than 2 seconds have passed since the last trigger for each sensor
@@ -250,7 +246,7 @@ void loop() {
   meanSpeed = (lastValidSpeed3 + lastValidSpeed4) / 2;
 
     
-  int len = snprintf(buffer, sizeof(buffer), "<%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f>\r\n", frontLen / 10, rearLen / 10, distanceFinal, lastValidSpeed3, lastValidSpeed3, lastValidSpeed4,lastValidSpeed4, meanSpeed);
+  int len = snprintf(buffer, sizeof(buffer), "<%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f>\r\n", frontLen / 10, rearLen / 10, distanceFinal, lastValidSpeed3, lastValidSpeed3, lastValidSpeed4,lastValidSpeed4, meanSpeed, adc0voltage, adc1voltage, adc2voltage);
   int len2 = snprintf(buffer2, sizeof(buffer2), "<%0.2f,>\r",meanSpeed);
   HallSerial.write(buffer2, len2);
   Serial.write(buffer, len);
