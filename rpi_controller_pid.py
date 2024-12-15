@@ -30,8 +30,9 @@ def check_wifi_connection(interface="wlan0"):
 
 ser = serial.Serial ("/dev/serial0", 115200)
 
-# Define the IP address and port to listen on
-HOST = '192.168.20.222'
+# Get current host ip address
+
+HOST = os.popen('hostname -I').read().split()[0]
 PORT = 12345
 
 # Create a socket for listening
