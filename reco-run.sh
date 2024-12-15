@@ -35,24 +35,24 @@ source /home/ubuntu/.bashrc
 
 if [ "$verbose" -eq 1 ]; then
     # Verbose is on, output is printed out
-        ros2 run car_to_backend serial_pub &
+        /opt/ros/humble/bin/ros2 run car_to_backend serial_pub &
         echo "[+] ROS2: serial_pub --> started"
-        ros2 run car_to_backend gps_pub &
+        /opt/ros/humble/bin/ros2 run car_to_backend gps_pub &
         echo "[+] ROS2: gps_pub --> started"
-        ros2 run car_to_backend udp_sub &
+        /opt/ros/humble/bin/ros2 run car_to_backend udp_sub &
         echo "[+] ROS2: udp_sub --> started"
 
-        sudo python3 /home/ubuntu/rpi_controller_pid.py &
+        python3 /home/ubuntu/rpi_controller_pid.py &
     else
     # Verbose is off, output is not printed out
-        ros2 run car_to_backend serial_pub 2>/dev/null &
+        /opt/ros/humble/bin/ros2 run car_to_backend serial_pub 2>/dev/null &
         echo "[+] ROS2: serial_pub --> started"
-        ros2 run car_to_backend gps_pub 1>/dev/null 2>/dev/null &
+        /opt/ros/humble/bin/ros2 run car_to_backend gps_pub 1>/dev/null 2>/dev/null &
         echo "[+] ROS2: gps_pub --> started"
-        ros2 run car_to_backend udp_sub 2>/dev/null &
+        /opt/ros/humble/bin/ros2 run car_to_backend udp_sub 2>/dev/null &
         echo "[+] ROS2: udp_sub --> started"
 
-        sudo python3 /home/ubuntu/rpi_controller_pid.py 1>/dev/null 2>/dev/null &
+        python3 /home/ubuntu/rpi_controller_pid.py 1>/dev/null 2>/dev/null &
         echo "[+] rpi_controller_pid.py --> started"
     fi
 
