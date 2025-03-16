@@ -5,11 +5,15 @@
 
 #define diameterCm 12
 #define millisToHours 3600000.00
+#define HALL_RR 2
+#define HALL_RL 3
+#define HALL_FR 4
+#define HALL_FL 5
 
-const int hallSensorPin1 = 2;
-const int hallSensorPin2 = 3;
-const int hallSensorPin3 = 4;
-const int hallSensorPin4 = 5;
+const int hallSensorPin1 = HALL_RR;
+const int hallSensorPin2 = HALL_RL; 
+const int hallSensorPin3 = HALL_FR; 
+const int hallSensorPin4 = HALL_FL;
 
 // Variables to store the last trigger time
 volatile unsigned long lastTriggerTime1 = 0;
@@ -243,7 +247,8 @@ void loop() {
   }
   
   volatile float meanSpeed;
-  meanSpeed = (lastValidSpeed3 + lastValidSpeed4) / 2;
+  // For mean speed we are using only rear sensor as only those wheels are driven
+  meanSpeed = (lastValidSpeed1 + lastValidSpeed2) / 2;
 
     
   int len = snprintf(buffer, sizeof(buffer), "<%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f>\r\n", frontLen / 10, rearLen / 10, distanceFinal, lastValidSpeed3, lastValidSpeed3, lastValidSpeed4,lastValidSpeed4, meanSpeed, adc0voltage, adc1voltage, adc2voltage);

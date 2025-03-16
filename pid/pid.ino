@@ -16,6 +16,10 @@
 // Define the PID variables
 double Setpoint, Input, Output;
 
+// Track elapsed time from last movement change
+unsigned long movementStartTime = 0;
+unsigned long movementElapsedTime = 0;
+
 // Specify the links and initial tuning parameters
 double Kp = 2.0, Ki = 5.0, Kd = 1.0;
 const byte numChars = 32; // Adjusted to accommodate larger input strings
@@ -24,12 +28,12 @@ char tempChars[numChars];
 const byte numChars2 = 32; // Adjusted to accommodate larger input strings
 char receivedChars2[numChars];
 char tempChars2[numChars];
-PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
+PID speedPid(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
 // SoftwareSerial for communication with another device
 SoftwareSerial mySerial(RX_PIN, TX_PIN);
 // Servo setup
 Servo throttleServo;
-Servo dir;
+Servo seteeringServo;
 boolean newData = false;
 boolean newData2 = false;
 
@@ -48,35 +52,40 @@ void throttle_init()
 }
 
 // Function to set a custom PWM value
-void dir_set(int deg)
+void steering_set(int deg)
 {
-  dir.write(deg);
+  seteeringServo.write(deg);
 }
 
 // Function to turn the wheels left at percentage specified by argument (e.g. 20,50,100)
-void dir_leftPct(int pct)
+void steering_left_percent(int pct)
 {
   // Alterations to this formula are found at multiple points in the project
   // This formula ensures the calculation of the right PWM value from the constants set at the start of the program
   // Firstly we calculate the absolute diference in PWM value from the middle point and get the wanted percantage value
   // Secondly, we want to  turn left (so the range of PWM is (1500,2000>), therefore we add the percentage value to the middle value.
-  dir.write(int(double(MIDDLE + (double(abs(MIDDLE - MAXLEFT)) * (double(pct) / 100)))));
+  seteeringServo.write(int(double(MIDDLE + (double(abs(MIDDLE - MAXLEFT)) * (double(pct) / 100)))));
 }
 
 // Function to turn the wheels right at percentage specified by argument (e.g. 20,50,100)
-void dir_rightPct(int pct)
+void steering_right_percent(int pct)
 {
   // Alterations to this formula are found at multiple points in the project
   // This formula ensures the calculation of the right PWM value from the constants set at the start of the program
   // Firstly we calculate the absolute diference in PWM value from the middle point and get the wanted percantage value
   // Secondly, we want to  turn right (so the range of PWM is <1000,1500)), therefore we subtract the percentage value to the middle value.
-  dir.write(int(double(MIDDLE - (double(abs(MIDDLE - MAXRIGHT)) * (double(pct) / 100)))));
+  seteeringServo.write(int(double(MIDDLE - (double(abs(MIDDLE - MAXRIGHT)) * (double(pct) / 100)))));
 }
 
 // Function to immediately set the servo to middle state
-void dir_straight()
+void steering_straight()
 {
-  dir.write(MIDDLE);
+  seteeringServo.write(MIDDLE);
+}
+
+void reset_movement() 
+{
+
 }
 
 void recvWithStartEndMarkersHall()
@@ -201,23 +210,28 @@ void setup()
   mySerial.begin(115200);
 
   throttle_init();
-  dir.attach(3);
+  seteeringServo.attach(3);
   // Initialize the PID
-  myPID.SetMode(AUTOMATIC);
-  myPID.SetOutputLimits(1500, 2000); // Limits for servo control
+  speedPid.SetMode(AUTOMATIC);
+  speedPid.SetOutputLimits(1500, 2000); // Limits for servo control
 
   Setpoint = 0; // Initial desired speed
 }
 
 void loop()
-{
+{ 
+  // Variable that track state if there was any input from serial
+  bool serialControlReceived = false;
+
   // Check for setpoint input
   if (Serial1.available())
   {
     Serial.print("Setpoint: ");
     recvWithStartEndMarkersControl();
     parseDataControl();
-    Serial.println(Setpoint);
+    //Serial.println(Setpoint);
+    serialControlReceived = true;
+    movementStartTime = millis();
   }
 
   // Check for current speed input
@@ -229,13 +243,21 @@ void loop()
     Serial.println(Input);
   }
 
-  dir_set(degrees);
+  if (!serialControlReceived) {
+    movementElapsedTime = millis() - movementStartTime;
+  }
+
+  steering_set(degrees);
 
   // Compute PID
-  myPID.Compute();
+  speedPid.Compute();
 
   int intOut = int(Output);
-  // Serial.println(intOut);
+  // If the time between new speed is more than 2500 milliseconds, we set the car to zero speed
+  if (movementElapsedTime > 2500)
+  {
+    intOut = 1500;  
+  }
   if (intOut < 1580 && Setpoint == 0 && Input == 0.00)
   {
     intOut = 1500;
