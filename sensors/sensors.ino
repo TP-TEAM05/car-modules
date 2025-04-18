@@ -239,7 +239,7 @@ void loop() {
   volatile unsigned long currentTime = micros(); // Get current time once for efficiency
 
   // Check if more than 2 seconds have passed since the last trigger for each sensor
-  if (currentTime - lastTriggerTime3 > 2000000) {
+  if (currentTime - lastTriggerTime1 > 2000000) {
     lastValidSpeed1 = 0.0; // Reset the last valid speed if no trigger within 2 seconds
     lastValidSpeed2 = 0.0; // Reset the last valid speed if no trigger within 2 seconds
     lastValidSpeed3 = 0.0; // Reset the last valid speed if no trigger within 2 seconds
@@ -251,7 +251,7 @@ void loop() {
   meanSpeed = (lastValidSpeed1 + lastValidSpeed2) / 2;
 
     
-  int len = snprintf(buffer, sizeof(buffer), "<%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f>\r\n", frontLen / 10, rearLen / 10, distanceFinal, lastValidSpeed3, lastValidSpeed3, lastValidSpeed4,lastValidSpeed4, meanSpeed, adc0voltage, adc1voltage, adc2voltage);
+  int len = snprintf(buffer, sizeof(buffer), "<%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f>\r\n", frontLen / 10, rearLen / 10, distanceFinal, lastValidSpeed1, lastValidSpeed1, lastValidSpeed2,lastValidSpeed2, meanSpeed, adc0voltage, adc1voltage, adc2voltage);
   int len2 = snprintf(buffer2, sizeof(buffer2), "<%0.2f,>\r",meanSpeed);
   HallSerial.write(buffer2, len2);
   Serial.write(buffer, len);
