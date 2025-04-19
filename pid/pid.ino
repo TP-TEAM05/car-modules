@@ -13,22 +13,29 @@
 #define MAXLEFT 180
 #define MAXRIGHT 0
 #define MIDDLE 90
-// Define the PID variables
-double Setpoint, Input, Output;
 
-// Track elapsed time from last movement change
-unsigned long movementStartTime = 0;
-unsigned long movementElapsedTime = 0;
+// Define the PID variables
+double SpeedSetpoint, SpeedInput, PwmOutput;
+
+// Used for counting how many times in a row was detected 0 as input
+int inputZeroCount = 0;
+int setpointZeroCount = 0;
+
+// Treshold when the speed is reset
+#define ZERO_INPUT_TRESHOLD 10
+#define ZERO_SETPOINT_TRESHOLD ZERO_INPUT_TRESHOLD
+#define LAST_INPUT_TRESHOLD 2500
+#define LAST_SETPOINT_TRESHOLD LAST_INPUT_TRESHOLD
+
+// Track time from last serial input
+unsigned long startBrakingTime = 0;
 
 // Specify the links and initial tuning parameters
 double Kp = 2.0, Ki = 5.0, Kd = 1.0;
-const byte numChars = 32;  // Adjusted to accommodate larger input strings
-char receivedChars[numChars];
-char tempChars[numChars];
-const byte numChars2 = 32;  // Adjusted to accommodate larger input strings
-char receivedChars2[numChars];
-char tempChars2[numChars];
-PID speedPid(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
+const byte numChars2 = 32; // Adjusted to accommodate larger input strings
+char receivedChars2[numChars2];
+char tempChars2[numChars2];
+PID speedPid(&SpeedInput, &PwmOutput, &SpeedSetpoint, Kp, Ki, Kd, DIRECT);
 // SoftwareSerial for communication with another device
 SoftwareSerial mySerial(RX_PIN, TX_PIN);
 // Servo setup
@@ -39,7 +46,8 @@ boolean newData2 = false;
 
 int degrees = MIDDLE;
 
-void throttle_init() {
+void throttle_init()
+{
   throttleServo.attach(2);
 
   // ESC init sequence
@@ -51,12 +59,14 @@ void throttle_init() {
 }
 
 // Function to set a custom PWM value
-void steering_set(int deg) {
+void steering_set(int deg)
+{
   seteeringServo.write(deg);
 }
 
 // Function to turn the wheels left at percentage specified by argument (e.g. 20,50,100)
-void steering_left_percent(int pct) {
+void steering_left_percent(int pct)
+{
   // Alterations to this formula are found at multiple points in the project
   // This formula ensures the calculation of the right PWM value from the constants set at the start of the program
   // Firstly we calculate the absolute diference in PWM value from the middle point and get the wanted percantage value
@@ -65,7 +75,8 @@ void steering_left_percent(int pct) {
 }
 
 // Function to turn the wheels right at percentage specified by argument (e.g. 20,50,100)
-void steering_right_percent(int pct) {
+void steering_right_percent(int pct)
+{
   // Alterations to this formula are found at multiple points in the project
   // This formula ensures the calculation of the right PWM value from the constants set at the start of the program
   // Firstly we calculate the absolute diference in PWM value from the middle point and get the wanted percantage value
@@ -74,14 +85,19 @@ void steering_right_percent(int pct) {
 }
 
 // Function to immediately set the servo to middle state
-void steering_straight() {
+void steering_straight()
+{
   seteeringServo.write(MIDDLE);
 }
 
-void reset_movement() {
+void reset_movement()
+{
+  SpeedSetpoint = 0;
+  throttleServo.writeMicroseconds(1500);
 }
 
-void recvWithStartEndMarkersHall() {
+void recvWithStartEndMarkersHall()
+{
   static boolean recvInProgress = false;
   static byte ndx = 0;
 
@@ -90,130 +106,136 @@ void recvWithStartEndMarkersHall() {
   char endMarker = '>';
   char rc;
 
-  while (mySerial.available() > 0 && newData2 == false) {
+  while (mySerial.available() > 0 && newData2 == false)
+  {
     rc = mySerial.read();
 
-    if (recvInProgress == true) {
-      if (rc != endMarker) {
+    if (recvInProgress == true)
+    {
+      if (rc != endMarker)
+      {
         receivedChars2[ndx] = rc;
         ndx++;
-        if (ndx >= numChars2) {
+        if (ndx >= numChars2)
+        {
           ndx = numChars2 - 1;
         }
-      } else {
-        receivedChars2[ndx] = '\0';  // terminate the string
+      }
+      else
+      {
+        receivedChars2[ndx] = '\0'; // terminate the string
         recvInProgress = false;
         ndx = 0;
         newData2 = true;
       }
     }
 
-    else if (rc == startMarker) {
+    else if (rc == startMarker)
+    {
       recvInProgress = true;
     }
   }
 }
 
-void parseDataHall() {
+void parseDataHall()
+{
   // Split the received data into its components
-  if (newData2) {
+  if (newData2)
+  {
     strcpy(tempChars2, receivedChars2);
     newData2 = false;
 
-    char *strtokIndx;                      // this is used by strtok() as an index
-    strtokIndx = strtok(tempChars2, ",");  // get the first part - the thrust
-    Input = atof(strtokIndx);
+    char *strtokIndx;                     // this is used by strtok() as an index
+    strtokIndx = strtok(tempChars2, ","); // get the first part - the thrust
+    SpeedInput = atof(strtokIndx);
   }
 }
 
-void recvWithStartEndMarkersControl() {
-  static boolean recvInProgress = false;
-  static byte ndx = 0;
+void receiveControls()
+{
+  static bool reading = false; // true while inside '< … >'
+  static String payload = "";  // collects the characters
 
-  // The start and end of new data is specified by < and > respectively
-  char startMarker = '<';
-  char endMarker = '>';
-  char rc;
+  while (Serial1.available())
+  {
+    char c = Serial1.read();
 
-  while (Serial1.available() > 0 && newData == false) {
-    rc = Serial1.read();
+    // start of frame -----------------------------------------------------------
+    if (c == '<')
+    {
+      reading = true;
+      payload = ""; // reset buffer
+      continue;     // don't store the '<'
+    }
 
-    if (recvInProgress == true) {
-      if (rc != endMarker) {
-        receivedChars[ndx] = rc;
-        ndx++;
-        if (ndx >= numChars) {
-          ndx = numChars - 1;
+    // end of frame -------------------------------------------------------------
+    if (c == '>' && reading)
+    {
+      reading = false;
+
+      // ── 1. echo the received string on a new line
+      Serial.println(payload); // e.g. "3.00,90"
+
+      // ── 2. parse the two comma‑separated values
+      int commaPos = payload.indexOf(',');
+      if (commaPos > 0)
+      { // basic sanity check
+        String speedStr = payload.substring(0, commaPos);
+        String angleStr = payload.substring(commaPos + 1);
+
+        SpeedSetpoint = speedStr.toFloat(); // "3.00"  →  3.00
+        degrees = angleStr.toInt();         // "90"    →  90
+
+        if (SpeedSetpoint == 0.00)
+        {
+          setpointZeroCount++;
         }
-      } else {
-        receivedChars[ndx] = '\0';  // terminate the string
-        recvInProgress = false;
-        ndx = 0;
-        newData = true;
+        else
+        {
+          setpointZeroCount = 0;
+        }
       }
+      return; // finished with this frame
     }
 
-    else if (rc == startMarker) {
-      recvInProgress = true;
+    // inside frame – accumulate characters ------------------------------------
+    if (reading)
+    {
+      payload += c; // grow the string
     }
   }
 }
 
-void parseDataControl() {
-  // Split the received data into its components
-  if (newData) {
-    strcpy(tempChars, receivedChars);
-    newData = false;
-
-    char *strtokIndx;  // this is used by strtok() as an index
-    // get the second part - km/h
-    strtokIndx = strtok(tempChars, ",");  // get the first part - the thrust
-    Setpoint = atof(strtokIndx);
-    // get the third part - turn
-    strtokIndx = strtok(NULL, ",");
-    degrees = atoi(strtokIndx);
-  }
-}
-
-void setup() {
+void setup()
+{
   // Start the serial communication
   Serial.begin(115200);
-  Serial1.begin(115200);
-  mySerial.begin(115200);
+  Serial1.begin(115200);  // Serial1 is for receiving control data
+  mySerial.begin(115200); // Serial for receiving speed data
+
+  Serial1.setTimeout(200); // 200ms timeout for Serial1
 
   throttle_init();
   seteeringServo.attach(3);
+  steering_set(90);
   // Initialize the PID
   speedPid.SetMode(AUTOMATIC);
-  speedPid.SetOutputLimits(1500, 2000);  // Limits for servo control
+  speedPid.SetOutputLimits(1500, 2000); // Limits for servo control
 
-  Setpoint = 0;  // Initial desired speed
+  SpeedSetpoint = 0; // Initial desired speed
 }
 
-void loop() {
-  // Variable that track state if there was any input from serial
-  bool serialControlReceived = false;
+void loop()
+{
 
-  // Check for setpoint input
-  if (Serial1.available()) {
-    Serial.print("Setpoint: ");
-    recvWithStartEndMarkersControl();
-    parseDataControl();
-    //Serial.println(Setpoint);
-    serialControlReceived = true;
-    movementStartTime = millis();
-  }
+  // Check for controls data
+  receiveControls();
 
-  // Check for current speed input
-  if (mySerial.available()) {
-    Serial.print("Current Speed: ");
+  // Check for current speed input from hall sensors
+  if (mySerial.available())
+  {
     recvWithStartEndMarkersHall();
     parseDataHall();
-    Serial.println(Input);
-  }
-
-  if (!serialControlReceived) {
-    movementElapsedTime = millis() - movementStartTime;
   }
 
   steering_set(degrees);
@@ -221,18 +243,35 @@ void loop() {
   // Compute PID
   speedPid.Compute();
 
-  int intOut = int(Output);
-  // If the time between new speed is more than 2500 milliseconds, we set the car to zero speed
-  if (movementElapsedTime > 2500) {
-    intOut = 1500;
+  int intOut = int(PwmOutput);
+
+  if (intOut < 1580 && SpeedSetpoint == 0 && SpeedInput == 0.00)
+  {
+    reset_movement();
   }
-  // If we receive the input of 0 the immidiately stall the motor and ignore the PID 
-  if (Input == 0.00) {
-    intOut = 1500;
+
+  if (setpointZeroCount > ZERO_SETPOINT_TRESHOLD || SpeedSetpoint > ZERO_INPUT_TRESHOLD)
+  {
+    reset_movement();
+    setpointZeroCount = 0;
+    inputZeroCount = 0;
   }
-  if (intOut < 1580 && Setpoint == 0 && Input == 0.00 ) {
-    intOut = 1500;
-  }
+
+  // if (SpeedSetpoint == 0 && SpeedInput > 1 && startBrakingTime == 0)
+  // {
+  //   startBrakingTime = millis();
+  //   intOut = THROTTLE_IDLE;
+  // }
+  // else if (SpeedSetpoint == 0 && SpeedInput > 1 && millis() - startBrakingTime < 1000)
+  // {
+  //   int pwmDiff = THROTTLE_MAXFORWARD - intOut;
+  //   intOut = THROTTLE_IDLE - pwmDiff / 2;
+  // }
+  // else
+  // {
+  //   inputZeroCount = 0;
+  //   startBrakingTime = 0;
+  // }
 
   throttleServo.writeMicroseconds(intOut);
 }
