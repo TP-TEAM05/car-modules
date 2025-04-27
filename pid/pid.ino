@@ -14,8 +14,12 @@
 #define MAXRIGHT 0
 #define MIDDLE 90
 
+#define SAFETY_TIMEOUT 1000 // 1 second timeout for safety
+
 // Define the PID variables
 double SpeedSetpoint, SpeedInput, PwmOutput;
+
+unsigned int LastControlsUpdate = 0; // Last time the setpoint was updated
 
 // Used for counting how many times in a row was detected 0 as input
 int inputZeroCount = 0;
@@ -84,16 +88,11 @@ void steering_right_percent(int pct)
   seteeringServo.write(int(double(MIDDLE - (double(abs(MIDDLE - MAXRIGHT)) * (double(pct) / 100)))));
 }
 
-// Function to immediately set the servo to middle state
-void steering_straight()
-{
-  seteeringServo.write(MIDDLE);
-}
-
 void reset_movement()
 {
   SpeedSetpoint = 0;
-  throttleServo.writeMicroseconds(1500);
+  throttleServo.writeMicroseconds(THROTTLE_IDLE);
+  return THROTTLE_IDLE;
 }
 
 void recvWithStartEndMarkersHall()
@@ -186,6 +185,8 @@ void receiveControls()
         SpeedSetpoint = speedStr.toFloat(); // "3.00"  →  3.00
         degrees = angleStr.toInt();         // "90"    →  90
 
+        LastControlsUpdate = millis();
+
         if (SpeedSetpoint == 0.00)
         {
           setpointZeroCount++;
@@ -217,7 +218,7 @@ void setup()
 
   throttle_init();
   seteeringServo.attach(3);
-  steering_set(90);
+  steering_set(MIDDLE);
   // Initialize the PID
   speedPid.SetMode(AUTOMATIC);
   speedPid.SetOutputLimits(1500, 2000); // Limits for servo control
@@ -248,6 +249,7 @@ void loop()
   if (intOut < 1580 && SpeedSetpoint == 0 && SpeedInput == 0.00)
   {
     reset_movement();
+    return;
   }
 
   if (setpointZeroCount > ZERO_SETPOINT_TRESHOLD || SpeedSetpoint > ZERO_INPUT_TRESHOLD)
@@ -255,6 +257,14 @@ void loop()
     reset_movement();
     setpointZeroCount = 0;
     inputZeroCount = 0;
+    return;
+  }
+
+  // Automatically reset to idle, when not received any data for 1 second
+  if (millis() - LastControlsUpdate > SAFETY_TIMEOUT)
+  {
+    reset_movement();
+    return;
   }
 
   // if (SpeedSetpoint == 0 && SpeedInput > 1 && startBrakingTime == 0)
