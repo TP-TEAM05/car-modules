@@ -16,7 +16,7 @@ if [ "$1" == "-r" ] || [ "$1" == "--remove" ]; then
 fi
 
 # Prepare ROS2 workspace
-git clone git@github.com:ReCoFIIT/ros2_ws.git ~/ros2_ws
+git clone git@github.com:TP-TEAM05/ros2_ws.git ~/ros2_ws
 cd ~/ros2_ws
 
 colcon build
